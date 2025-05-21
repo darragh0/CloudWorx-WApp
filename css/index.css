@@ -1,0 +1,161 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+/* Color Vars */
+/* Global Styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  margin: 0;
+  background: #fff;
+  color: #434343;
+  transition: background-color 150ms, color 150ms;
+}
+
+/* Navbar */
+.nav {
+  font-size: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 130px;
+  position: relative;
+}
+.nav__link {
+  text-decoration: none;
+}
+.nav__left .nav__link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.nav__left .logo {
+  height: 40px;
+}
+.nav__left .app-name {
+  font-size: 1.2em;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #1a66ff;
+}
+.nav__left .app-name:hover {
+  color: #214ccc;
+}
+.nav__center {
+  font-weight: 300;
+  display: flex;
+  justify-content: center;
+  flex-grow: 1;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.nav__center .nav__link {
+  margin: 0 15px;
+  color: #434343;
+  font-weight: 500;
+}
+.nav__center .nav__link:hover, .nav__center .nav__link--active {
+  color: #1a66ff;
+}
+.nav__right {
+  display: flex;
+  align-items: center;
+}
+.nav__right .nav__link {
+  color: #1a66ff;
+  font-weight: 500;
+}
+.nav__right .nav__link:hover {
+  color: #214ccc;
+}
+
+/* Button Styles */
+.btn {
+  padding: 0.6em 0.9em;
+  border: none;
+  border-radius: 0.5em;
+  cursor: pointer;
+  text-decoration: none;
+  font-weight: 450;
+}
+.btn--primary {
+  background: #1a66ff;
+  color: #fff;
+  margin-left: 15px;
+  transition: 100ms background ease;
+}
+.btn--primary:hover {
+  background: #214ccc;
+}
+.btn--large {
+  padding: 0.8em 1em;
+  font-size: 1em;
+}
+
+.dark-mode-button {
+  background: none;
+  border: none;
+  font-size: 1.2em;
+  cursor: pointer;
+  margin-right: 15px;
+  color: #434343;
+}
+
+/* Hero Section */
+.hero-section {
+  text-align: center;
+  padding: 100px 20px;
+  color: #000;
+}
+.hero-section h1 {
+  font-size: 3.2rem;
+  font-weight: 650;
+  margin-bottom: 20px;
+}
+.hero-section p {
+  font-size: 1.2em;
+  margin-bottom: 60px;
+}
+
+/* Dark Mode */
+body.dark-mode {
+  background: #1a1a2e;
+  color: #e0e0e0;
+}
+body.dark-mode .app-name {
+  color: #a3c4ff;
+}
+body.dark-mode .app-name:hover {
+  color: #549bff;
+}
+body.dark-mode .nav__link {
+  color: #fff;
+}
+body.dark-mode .nav__center .nav__link {
+  color: #fff;
+}
+body.dark-mode .nav__center .nav__link--active, body.dark-mode .nav__center .nav__link:hover {
+  color: #a3c4ff;
+}
+body.dark-mode .nav__right .nav__link {
+  color: #a3c4ff;
+}
+body.dark-mode .nav__right .nav__link:hover {
+  color: #549bff;
+}
+body.dark-mode .dark-mode-button {
+  color: #fff;
+}
+body.dark-mode .btn--primary {
+  background: #549bff;
+  color: #1a1a2e;
+}
+body.dark-mode .btn--primary:hover {
+  background: #a3c4ff;
+}
+body.dark-mode .hero-section {
+  color: #fff;
+}/*# sourceMappingURL=index.css.map */
