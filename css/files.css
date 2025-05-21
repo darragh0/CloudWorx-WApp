@@ -391,4 +391,306 @@ body.dark-mode .form__submit:hover {
 .page-header .__description b {
   color: #2c2c2c;
   font-weight: 500;
-}/*# sourceMappingURL=common.css.map */
+}
+
+.files-container {
+  max-width: 90%;
+  margin: 0 auto 100px;
+}
+.files-container .files-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  align-items: center;
+}
+.files-container .files-filter {
+  display: flex;
+  gap: 10px;
+}
+.files-container .files-filter .filter-btn {
+  background: transparent;
+  border: 1px solid #e2e2e2;
+  border-radius: 5em;
+  padding: 0.5em 1em;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.files-container .files-filter .filter-btn.filter-btn--active {
+  background-color: #1a66ff;
+  color: white;
+  border-color: #1a66ff;
+}
+.files-container .files-filter .filter-btn:hover:not(.filter-btn--active) {
+  background-color: rgba(26, 102, 255, 0.1);
+}
+.files-container .files-table-container {
+  overflow-x: auto;
+}
+.files-container .files-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+.files-container .files-table th,
+.files-container .files-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #e2e2e2;
+}
+.files-container .files-table th {
+  font-weight: 500;
+  color: #2c2c2c;
+  background-color: rgba(226, 226, 226, 0.3);
+}
+.files-container .files-table tr:hover {
+  background-color: rgba(226, 226, 226, 0.1);
+}
+.files-container .files-table .file-actions {
+  display: flex;
+  gap: 10px;
+}
+.files-container .files-table .file-actions button {
+  background: transparent;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  color: #434343;
+  transition: all 0.2s ease;
+  padding: 8px;
+  border-radius: 4px;
+}
+.files-container .files-table .file-actions button:hover {
+  color: #1a66ff;
+  background-color: rgba(26, 102, 255, 0.1);
+}
+.files-container .files-table .file-actions button.delete-btn:hover {
+  color: #e74c3c;
+  background-color: rgba(231, 76, 60, 0.1);
+}
+.files-container .files-table .file-actions button.remove-btn:hover {
+  color: #e74c3c;
+  background-color: rgba(231, 76, 60, 0.1);
+}
+.files-container .files-table .no-files-message {
+  text-align: center;
+  padding: 20px;
+  color: #434343;
+}
+.files-container .files-table .file-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.files-container .files-table .file-name .shared-icon {
+  color: #1a66ff;
+  font-size: 0.85rem;
+}
+
+.file-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  border-radius: 3px;
+  margin-left: 8px;
+  font-weight: 500;
+}
+.file-badge--shared {
+  background-color: rgba(26, 102, 255, 0.2);
+  color: #1a66ff;
+}
+.file-badge--owned {
+  background-color: rgba(46, 204, 113, 0.2);
+  color: #2ecc71;
+}
+
+.share-modal-content .share-file-name {
+  margin-bottom: 20px;
+  font-weight: 500;
+}
+.share-modal-content .share-file-name span {
+  padding: 0.2em 0.5em;
+  background: #e2e2e2;
+  font-family: "Consolas";
+  font-weight: normal;
+}
+.share-modal-content .share-users-list {
+  margin-bottom: 20px;
+}
+.share-modal-content .share-users-list h3 {
+  margin-bottom: 10px;
+  font-size: 1rem;
+  font-weight: 500;
+}
+.share-modal-content .share-users-list .users-list {
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px solid #e2e2e2;
+  border-radius: 4px;
+}
+.share-modal-content .share-users-list .users-list .user-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #e2e2e2;
+}
+.share-modal-content .share-users-list .users-list .user-item:last-child {
+  border-bottom: none;
+}
+.share-modal-content .share-users-list .users-list .user-item .username {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.share-modal-content .share-users-list .users-list .user-item .revoke-btn {
+  color: #e74c3c;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.share-modal-content .share-users-list .users-list .user-item .revoke-btn:hover {
+  text-decoration: underline;
+}
+.share-modal-content .share-users-list .users-list .no-users-message {
+  padding: 20px;
+  text-align: center;
+  color: #434343;
+}
+
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  background-color: white;
+  border-left: 4px solid #3498db;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transform: translateX(100%);
+  opacity: 0;
+  transition: transform 0.3s, opacity 0.3s;
+  z-index: 1000;
+  font-size: 0.95rem;
+}
+.notification .fas {
+  font-size: 1.2rem;
+}
+.notification--visible {
+  transform: translateX(0);
+  opacity: 1;
+}
+.notification--success {
+  border-left-color: #2ecc71;
+}
+.notification--success .fas {
+  color: #2ecc71;
+}
+.notification--error {
+  border-left-color: #e74c3c;
+}
+.notification--error .fas {
+  color: #e74c3c;
+}
+.notification--info {
+  border-left-color: #3498db;
+}
+.notification--info .fas {
+  color: #3498db;
+}
+
+.custom-confirm {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1001;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.custom-confirm--visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.custom-confirm__content {
+  background-color: white;
+  border-radius: 8px;
+  max-width: 400px;
+  width: 90%;
+  padding: 20px;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
+}
+.custom-confirm__title {
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+.custom-confirm__message {
+  margin-bottom: 20px;
+}
+.custom-confirm__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.custom-confirm__button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.custom-confirm__button--cancel {
+  background-color: #e2e2e2;
+  border: none;
+  color: #2c2c2c;
+}
+.custom-confirm__button--cancel:hover {
+  background-color: #c9c9c9;
+}
+.custom-confirm__button--confirm {
+  background-color: #e74c3c;
+  border: none;
+  color: white;
+}
+.custom-confirm__button--confirm:hover {
+  background-color: #d62c1a;
+}
+
+.tooltip {
+  position: relative;
+}
+.tooltip:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  z-index: 10;
+  margin-bottom: 5px;
+}
+.tooltip:hover::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent transparent rgba(0, 0, 0, 0.8) transparent;
+  margin-bottom: -5px;
+  z-index: 10;
+}/*# sourceMappingURL=files.css.map */

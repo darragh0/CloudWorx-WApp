@@ -1,0 +1,366 @@
+@import "common";
+
+// Variables
+$primary: $blue;
+$error: #e74c3c;
+$success: #2ecc71;
+$info: #3498db;
+
+.files-container {
+  max-width: 90%;
+  margin: 0 auto 100px;
+
+  .files-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    align-items: center;
+  }
+
+  .files-filter {
+    display: flex;
+    gap: 10px;
+
+    .filter-btn {
+      background: transparent;
+      border: 1px solid $lgrey;
+      border-radius: 5em;
+      padding: 0.5em 1em;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &.filter-btn--active {
+        background-color: $blue;
+        color: white;
+        border-color: $blue;
+      }
+
+      &:hover:not(.filter-btn--active) {
+        background-color: rgba($blue, 0.1);
+      }
+    }
+  }
+
+  .files-table-container {
+    overflow-x: auto;
+  }
+
+  .files-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+
+    th,
+    td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid $lgrey;
+    }
+
+    th {
+      font-weight: 500;
+      color: $bigtext;
+      background-color: rgba($lgrey, 0.3);
+    }
+
+    tr:hover {
+      background-color: rgba($lgrey, 0.1);
+    }
+
+    .file-actions {
+      display: flex;
+      gap: 10px;
+
+      button {
+        background: transparent;
+        border: none;
+        font-size: 1rem;
+        cursor: pointer;
+        color: $ltxt;
+        transition: all 0.2s ease;
+        padding: 8px;
+        border-radius: 4px;
+
+        &:hover {
+          color: $blue;
+          background-color: rgba($blue, 0.1);
+        }
+
+        &.delete-btn:hover {
+          color: $error;
+          background-color: rgba($error, 0.1);
+        }
+
+        &.remove-btn:hover {
+          color: $error;
+          background-color: rgba($error, 0.1);
+        }
+      }
+    }
+
+    .no-files-message {
+      text-align: center;
+      padding: 20px;
+      color: $ltxt;
+    }
+
+    .file-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .shared-icon {
+        color: $blue;
+        font-size: 0.85rem;
+      }
+    }
+  }
+}
+
+// File badges
+.file-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  border-radius: 3px;
+  margin-left: 8px;
+  font-weight: 500;
+
+  &--shared {
+    background-color: rgba($blue, 0.2);
+    color: $blue;
+  }
+
+  &--owned {
+    background-color: rgba($success, 0.2);
+    color: $success;
+  }
+}
+
+// Share modal additions
+.share-modal-content {
+  .share-file-name {
+    margin-bottom: 20px;
+    font-weight: 500;
+
+    span {
+      padding: 0.2em 0.5em;
+      background: $lgrey;
+      font-family: "Consolas";
+      font-weight: normal;
+    }
+  }
+
+  .share-users-list {
+    margin-bottom: 20px;
+
+    h3 {
+      margin-bottom: 10px;
+      font-size: 1rem;
+      font-weight: 500;
+    }
+
+    .users-list {
+      max-height: 150px;
+      overflow-y: auto;
+      border: 1px solid $lgrey;
+      border-radius: 4px;
+
+      .user-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        border-bottom: 1px solid $lgrey;
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        .username {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .revoke-btn {
+          color: $error;
+          background: none;
+          border: none;
+          cursor: pointer;
+
+          &:hover {
+            text-decoration: underline;
+          }
+        }
+      }
+
+      .no-users-message {
+        padding: 20px;
+        text-align: center;
+        color: $ltxt;
+      }
+    }
+  }
+}
+
+// Notification component
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  background-color: white;
+  border-left: 4px solid $info;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transform: translateX(100%);
+  opacity: 0;
+  transition: transform 0.3s, opacity 0.3s;
+  z-index: 1000;
+  font-size: 0.95rem;
+
+  .fas {
+    font-size: 1.2rem;
+  }
+
+  &--visible {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  &--success {
+    border-left-color: $success;
+
+    .fas {
+      color: $success;
+    }
+  }
+
+  &--error {
+    border-left-color: $error;
+
+    .fas {
+      color: $error;
+    }
+  }
+
+  &--info {
+    border-left-color: $info;
+
+    .fas {
+      color: $info;
+    }
+  }
+}
+
+// Custom confirmation dialog style for the future implementation
+.custom-confirm {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1001;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+
+  &--visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  &__content {
+    background-color: white;
+    border-radius: 8px;
+    max-width: 400px;
+    width: 90%;
+    padding: 20px;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  &__title {
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin-bottom: 10px;
+  }
+
+  &__message {
+    margin-bottom: 20px;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  &__button {
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+
+    &--cancel {
+      background-color: $lgrey;
+      border: none;
+      color: $bigtext;
+
+      &:hover {
+        background-color: darken($lgrey, 10%);
+      }
+    }
+
+    &--confirm {
+      background-color: $error;
+      border: none;
+      color: white;
+
+      &:hover {
+        background-color: darken($error, 10%);
+      }
+    }
+  }
+}
+
+// Tooltip component
+.tooltip {
+  position: relative;
+
+  &:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    z-index: 10;
+    margin-bottom: 5px;
+  }
+
+  &:hover::before {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent transparent rgba(0, 0, 0, 0.8) transparent;
+    margin-bottom: -5px;
+    z-index: 10;
+  }
+}

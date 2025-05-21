@@ -1,0 +1,498 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+
+/* Color Vars */
+$black: #000;
+$blue: #1a66ff;
+$lblue: #549bff;
+$llblue: #a3c4ff;
+$dblue: #214ccc;
+$lbg: #fff;
+$dbg: #1a1a2e;
+$ltxt: #434343;
+$dtxt: #fff;
+$bigtext: #2c2c2c;
+$lgrey: #e2e2e2;
+$error: #e74c3c;
+
+/* Global Styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  margin: 0;
+  color: $ltxt;
+}
+
+/* Navbar */
+.nav {
+  font-size: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 130px;
+  position: relative;
+
+  &__link {
+    text-decoration: none;
+  }
+
+  &__left {
+    .nav__link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo {
+      height: 40px;
+    }
+
+    .app-name {
+      font-size: 1.2em;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: $blue;
+
+      &:hover {
+        color: $dblue;
+      }
+    }
+  }
+
+  &__center {
+    font-weight: 300;
+    display: flex;
+    justify-content: center;
+    flex-grow: 1;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+
+    .nav__link {
+      margin: 0 15px;
+      color: $ltxt;
+      font-weight: 500;
+
+      &:hover,
+      &--active {
+        color: $blue;
+      }
+    }
+  }
+
+  &__right {
+    display: flex;
+    align-items: center;
+
+    .nav__link {
+      color: $blue;
+      font-weight: 500;
+
+      &:hover {
+        color: $dblue;
+      }
+    }
+  }
+}
+
+/* Button Styles */
+.btn {
+  padding: 0.6em 0.9em;
+  border: none;
+  border-radius: 0.5em;
+  cursor: pointer;
+  text-decoration: none;
+  font-weight: 450;
+
+  &--primary {
+    background: $blue;
+    color: $lbg;
+    margin-left: 15px;
+    transition: 100ms background ease;
+
+    &:hover {
+      background: $dblue;
+    }
+  }
+
+  &--large {
+    padding: 0.8em 1em;
+    font-size: 1em;
+  }
+}
+
+.dark-mode-button {
+  background: none;
+  border: none;
+  font-size: 1.2em;
+  cursor: pointer;
+  margin-right: 15px;
+  color: $ltxt;
+}
+
+/* Hero Section */
+.hero-section {
+  text-align: center;
+  padding: 200px 20px;
+  color: $black;
+
+  h1 {
+    font-size: 3.2rem;
+    font-weight: 650;
+    margin-bottom: 20px;
+  }
+
+  p {
+    font-size: 1.2em;
+    margin-bottom: 60px;
+  }
+}
+
+/* Dark Mode */
+body.dark-mode {
+  color: #e0e0e0;
+  background: $dbg;
+
+  .app-name {
+    color: $llblue;
+
+    &:hover {
+      color: $lblue;
+    }
+  }
+
+  .nav {
+    &__link {
+      color: $dtxt;
+    }
+    &__center {
+      .nav__link {
+        color: $dtxt;
+
+        &--active,
+        &:hover {
+          color: $llblue;
+        }
+      }
+    }
+
+    &__right {
+      .nav__link {
+        color: $llblue;
+
+        &:hover {
+          color: $lblue;
+        }
+      }
+    }
+  }
+
+  .dark-mode-button {
+    color: $dtxt;
+  }
+
+  .btn--primary {
+    background: $lblue;
+    color: $dbg;
+
+    &:hover {
+      background: $llblue;
+    }
+  }
+
+  .hero-section {
+    color: $dtxt;
+  }
+}
+
+/* Modal Overlay Styles */
+.modal {
+  display: none;
+  position: fixed;
+  top: -100px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+
+  &--active {
+    display: flex;
+  }
+
+  &__content {
+    background-color: $lbg;
+    border-radius: 0.8em;
+    padding: 30px;
+    width: 30%;
+    max-width: 90%;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    position: relative;
+  }
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 3em;
+
+    h2 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: $bigtext;
+    }
+  }
+
+  &__close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: $ltxt;
+
+    &:hover {
+      color: $blue;
+    }
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: 23px;
+  }
+
+  &__footer {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 0.9rem;
+
+    a {
+      color: $blue;
+      text-decoration: none;
+
+      &:hover {
+        color: $dblue;
+      }
+    }
+  }
+}
+
+.form {
+  &__group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    position: relative;
+  }
+
+  &__label {
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  &__input {
+    padding: 11px;
+    font-size: 0.95rem;
+    border: 1px solid $lgrey;
+    border-radius: 0.5em;
+
+    &:focus {
+      outline: none;
+      border-color: $blue;
+    }
+  }
+
+  &__password-toggle {
+    position: absolute;
+    right: 12px;
+    top: 33px;
+    cursor: pointer;
+    color: $ltxt;
+    opacity: 0.7;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  &__error {
+    color: #e74c3c;
+    font-size: 0.85rem;
+    margin-top: 4px;
+    display: none;
+
+    &--visible {
+      display: block;
+    }
+  }
+
+  &__captcha {
+    font-family: "Inter", sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: $lgrey;
+    height: 80px;
+    border-radius: 0.5em;
+    margin-top: 10px;
+  }
+
+  &__submit {
+    margin: auto;
+    margin-top: 1em;
+    font-size: 1rem;
+    background: $blue;
+    color: $lbg;
+    border: none;
+    border-radius: 0.5em;
+    padding: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    width: 100%;
+    transition: 100ms background, 100ms width ease;
+
+    &:hover {
+      background: $dblue;
+    }
+
+    &--success {
+      border: none;
+      width: 50%;
+      background: #2ecc71;
+    }
+  }
+}
+
+/* Dark Mode Modal Styles */
+body.dark-mode {
+  .page-header {
+    h1 {
+      color: $dtxt;
+    }
+
+    &__label {
+      color: $dtxt;
+    }
+
+    &__description {
+      b {
+        color: $dtxt;
+      }
+      color: $dtxt;
+    }
+  }
+
+  .modal {
+    &__content {
+      background-color: $dbg;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    &__header {
+      h2 {
+        color: $dtxt;
+      }
+    }
+
+    &__close {
+      color: $dtxt;
+
+      &:hover {
+        color: $llblue;
+      }
+    }
+
+    &__footer {
+      a {
+        color: $llblue;
+
+        &:hover {
+          color: $lblue;
+        }
+      }
+    }
+  }
+
+  .form {
+    &__label {
+      color: $dtxt;
+    }
+
+    &__input {
+      background-color: rgba(255, 255, 255, 0.1);
+      border-color: #3a3a50;
+      color: $dtxt;
+
+      &:focus {
+        border-color: $llblue;
+      }
+    }
+
+    &__password-toggle {
+      color: $dtxt;
+    }
+
+    &__error {
+      color: #ff6b6b;
+    }
+
+    &__captcha {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    &__submit {
+      background: $lblue;
+      color: $dbg;
+
+      &:hover {
+        background: $llblue;
+      }
+    }
+  }
+}
+
+/* Page Header Styles */
+.page-header {
+  text-align: center;
+  padding: 100px 20px;
+  max-width: 800px;
+  margin: 0 auto;
+
+  &__label {
+    margin-top: 14px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 20px;
+    border: 1px solid $lgrey;
+    border-radius: 5em;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: $ltxt;
+    padding: 0.4em 0.9em;
+    width: fit-content;
+  }
+
+  h1 {
+    color: $bigtext;
+    font-size: 3.5rem;
+    font-weight: 600;
+    margin: 10px 0 20px;
+  }
+
+  .__description {
+    b {
+      color: $bigtext;
+      font-weight: 500;
+    }
+
+    font-size: 1rem;
+    line-height: 1.6;
+    color: $ltxt;
+  }
+}

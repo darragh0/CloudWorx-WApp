@@ -1,0 +1,57 @@
+@import "common";
+
+.our-story {
+  display: flex;
+  max-width: 83%;
+  margin: 0 auto;
+  gap: 4em;
+  align-items: flex-start;
+
+  &__content {
+    flex: 1;
+
+    h2 {
+      font-size: 3rem;
+      color: $bigtext;
+      font-weight: 600;
+      margin-bottom: 30px;
+    }
+
+    p {
+      font-size: 1.1rem;
+      line-height: 1.6;
+      margin-bottom: 20px;
+      color: $ltxt;
+    }
+  }
+
+  &__image {
+    margin-top: 5em;
+    flex: 1;
+    border-radius: 1em;
+
+    img {
+      border: 3px solid $lblue;
+      width: 100%;
+      border-radius: 8px;
+    }
+  }
+}
+
+/* Dark mode styles */
+body.dark-mode {
+  .our-story {
+    &__content {
+      p,
+      h2 {
+        color: $dtxt;
+      }
+    }
+
+    &__image {
+      img {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      }
+    }
+  }
+}
