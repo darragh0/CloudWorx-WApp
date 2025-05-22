@@ -2,7 +2,7 @@
   "name": "cloudworx-wapp",
   "version": "1.0.0",
   "description": "HTML/JS web app for CloudWorx project.",
-  "main": "js/index.js",
+  "main": "server.js",
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
