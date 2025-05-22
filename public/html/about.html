@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>About Us - CloudWorx</title>
+    <link rel="icon" type="image/x-icon" href="../img/ico/favicon.ico" />
+    <link rel="stylesheet" href="../css/about.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="nav__left">
+        <a href="/" class="nav__link">
+          <img
+            src="img/webp/cloudworx-logo.webp"
+            alt="CloudWorx Logo"
+            class="logo" />
+          <div class="app-name">CloudWorx</div>
+        </a>
+      </div>
+      <div class="nav__center">
+        <a href="/" class="nav__link">Home</a>
+        <a href="#" class="nav__link nav__link--active">About</a>
+        <!-- Files link will be added dynamically when user is authenticated -->
+      </div>
+      <div class="nav__right">
+        <button id="dark-mode-toggle" class="dark-mode-button">
+          <i class="fas fa-moon"></i>
+        </button>
+        <a href="#" class="nav__link" id="sign-in-link">Sign in</a>
+        <a href="#" class="btn btn--primary" id="nav-get-started"
+          >Get started</a
+        >
+      </div>
+    </nav>
+
+    <main>
+      <section class="page-header">
+        <p class="page-header__label">About us</p>
+        <h1>Building for the future</h1>
+        <p class="page-header__description">
+          <b>Giving you the right data at the right time</b> &ndash; we are
+          building the digital infrastructure to enable you to manage your files
+          at scale.
+        </p>
+      </section>
+
+      <section class="our-story">
+        <div class="our-story__content">
+          <h2>Our story</h2>
+          <p>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
+            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+            aliquip ex ea commodo consequat.
+          </p>
+          <p>
+            Duis aute irure dolor in reprehenderit in voluptate velit esse
+            cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat
+            cupidatat non proident, sunt in culpa qui officia deserunt mollit
+            anim id est laborum.
+          </p>
+          <p>
+            Sed ut perspiciatis unde omnis iste natus error sit voluptatem
+            accusantium doloremque laudantium, totam rem aperiam, eaque ipsa
+            quae ab illo inventore veritatis et quasi architecto beatae vitae
+            dicta sunt explicabo.
+          </p>
+        </div>
+        <div class="our-story__image">
+          <img src="img/webp/us.webp" alt="Team Photo" />
+        </div>
+      </section>
+    </main>
+
+    <!-- Sign Up Modal -->
+    <div class="modal" id="signup-modal">
+      <div class="modal__content">
+        <div class="modal__header">
+          <h2>Create an Account</h2>
+          <button class="modal__close"><i class="fas fa-times"></i></button>
+        </div>
+        <form class="modal__form" id="signup-form">
+          <div class="form__group">
+            <label for="signup-username" class="form__label">Username</label>
+            <input
+              type="text"
+              id="signup-username"
+              class="form__input"
+              required
+              autocomplete="username" />
+            <div class="form__error" id="signup-username-error"></div>
+          </div>
+          <div class="form__group">
+            <label for="signup-password" class="form__label">Password</label>
+            <input
+              type="password"
+              id="signup-password"
+              class="form__input"
+              required
+              autocomplete="new-password" />
+            <i
+              class="fas fa-eye form__password-toggle"
+              data-target="signup-password"></i>
+            <div class="form__error" id="signup-password-error"></div>
+          </div>
+          <div class="form__group">
+            <label for="signup-confirm-password" class="form__label"
+              >Confirm Password</label
+            >
+            <input
+              type="password"
+              id="signup-confirm-password"
+              class="form__input"
+              required
+              autocomplete="new-password" />
+            <i
+              class="fas fa-eye form__password-toggle"
+              data-target="signup-confirm-password"></i>
+            <div class="form__error" id="signup-confirm-password-error"></div>
+          </div>
+          <button type="submit" id="sign-up-submit" class="form__submit">
+            Create Account
+          </button>
+        </form>
+        <div class="modal__footer">
+          Already have an account?
+          <a href="#" id="show-signin">Sign in</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sign In Modal -->
+    <div class="modal" id="signin-modal">
+      <div class="modal__content">
+        <div class="modal__header">
+          <h2>Sign In</h2>
+          <button class="modal__close"><i class="fas fa-times"></i></button>
+        </div>
+        <form class="modal__form" id="signin-form">
+          <div class="form__group">
+            <label for="signin-username" class="form__label">Username</label>
+            <input
+              type="text"
+              id="signin-username"
+              class="form__input"
+              required
+              autocomplete="username" />
+            <div class="form__error" id="signin-username-error"></div>
+          </div>
+          <div class="form__group">
+            <label for="signin-password" class="form__label">Password</label>
+            <input
+              type="password"
+              id="signin-password"
+              class="form__input"
+              required
+              autocomplete="current-password" />
+            <i
+              class="fas fa-eye form__password-toggle"
+              data-target="signin-password"></i>
+            <div class="form__error" id="signin-password-error"></div>
+          </div>
+          <button type="submit" id="sign-in-submit" class="form__submit">
+            Sign In
+          </button>
+        </form>
+        <div class="modal__footer">
+          Don't have an account?
+          <a href="#" id="show-signup">Sign up</a>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>

@@ -3,8 +3,11 @@
   "version": "1.0.0",
   "description": "HTML/JS web app for CloudWorx project.",
   "main": "js/index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "serve": "node server.js",
+    "dev": "nodemon server.js"
   },
   "repository": {
     "type": "git",
@@ -15,5 +18,12 @@
   "bugs": {
     "url": "https://github.com/darragh0/CloudWorx-WApp/issues"
   },
-  "homepage": "https://github.com/darragh0/CloudWorx-WApp#readme"
+  "homepage": "https://github.com/darragh0/CloudWorx-WApp#readme",
+  "dependencies": {
+    "argon2": "^0.43.0",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
 }
