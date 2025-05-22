@@ -293,10 +293,21 @@ body.dark-mode .hero-section {
 .form__submit--success {
   border: none;
   width: 50%;
-  background: #2ecc71;
 }
 
 /* Dark Mode Modal Styles */
+body.dark-mode .page-header h1 {
+  color: #fff;
+}
+body.dark-mode .page-header__label {
+  color: #fff;
+}
+body.dark-mode .page-header__description {
+  color: #fff;
+}
+body.dark-mode .page-header__description b {
+  color: #fff;
+}
 body.dark-mode .modal__content {
   background-color: #1a1a2e;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);

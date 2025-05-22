@@ -336,7 +336,7 @@ document.addEventListener("DOMContentLoaded", () => {
       submitBtn.innerHTML = prevMsg;
       form.reset();
       closeModal(modal);
-      
+
       // Navigate to files page after successful login/signup
       window.location.href = filesPath;
     }, 2000);

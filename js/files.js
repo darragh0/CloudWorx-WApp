@@ -2,16 +2,43 @@
  * CloudWorx Files Page JavaScript
  */
 
-document.addEventListener("DOMContentLoaded", () => {
-  // Check if user is authenticated
-  const isAuthenticated = localStorage.getItem("authenticated") === "true";
-  if (!isAuthenticated) {
-    // Redirect to home page if not authenticated
-    window.location.href = "../index.html";
-    return;
-  }
+// Mock data for demonstration
+const ALL_FILES = [
+  {
+    id: 1,
+    name: "Project Documentation.pdf",
+    owner: "me",
+    size: "2.4 MB",
+    modified: "2025-05-15",
+    shared: false,
+  },
+  {
+    id: 2,
+    name: "Financial Report.xlsx",
+    owner: "me",
+    size: "1.8 MB",
+    modified: "2025-05-10",
+    shared: true,
+  },
+  {
+    id: 3,
+    name: "Presentation.pptx",
+    owner: "john_doe",
+    size: "4.2 MB",
+    modified: "2025-05-18",
+    shared: true,
+  },
+  {
+    id: 4,
+    name: "Meeting Notes.docx",
+    owner: "me",
+    size: "620 KB",
+    modified: "2025-05-20",
+    shared: false,
+  },
+];
 
-  // DOM Elements
+document.addEventListener("DOMContentLoaded", () => {
   const filterButtons = document.querySelectorAll(".filter-btn");
   const filesList = document.getElementById("files-list");
   const uploadBtn = document.getElementById("upload-file-btn");
@@ -20,56 +47,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const closeButtons = document.querySelectorAll(".modal__close");
   const signOutBtn = document.getElementById("sign-out-btn");
 
-  // Mock data for demonstration
-  const mockFiles = [
-    {
-      id: 1,
-      name: "Project Documentation.pdf",
-      owner: "me",
-      size: "2.4 MB",
-      modified: "2025-05-15",
-      shared: false,
-    },
-    {
-      id: 2,
-      name: "Financial Report.xlsx",
-      owner: "me",
-      size: "1.8 MB",
-      modified: "2025-05-10",
-      shared: true,
-    },
-    {
-      id: 3,
-      name: "Presentation.pptx",
-      owner: "john_doe",
-      size: "4.2 MB",
-      modified: "2025-05-18",
-      shared: true,
-    },
-    {
-      id: 4,
-      name: "Meeting Notes.docx",
-      owner: "me",
-      size: "620 KB",
-      modified: "2025-05-20",
-      shared: false,
-    },
-  ];
-
-  let currentFilter = "all";
-  let currentFileId = null;
+  let curFilter = "all";
+  let curFileId = null;
 
   // Filter functionality
-  filterButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      const filter = button.getAttribute("data-filter");
-      currentFilter = filter;
+  filterButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const filter = btn.getAttribute("data-filter");
+      curFilter = filter;
 
       // Update active button
       filterButtons.forEach((btn) =>
         btn.classList.remove("filter-btn--active")
       );
-      button.classList.add("filter-btn--active");
+      btn.classList.add("filter-btn--active");
 
       // Update displayed files
       displayFiles();
@@ -80,16 +71,16 @@ document.addEventListener("DOMContentLoaded", () => {
   function displayFiles() {
     let filteredFiles = [];
 
-    switch (currentFilter) {
+    switch (curFilter) {
       case "owned":
-        filteredFiles = mockFiles.filter((file) => file.owner === "me");
+        filteredFiles = ALL_FILES.filter((file) => file.owner === "me");
         break;
       case "shared":
-        filteredFiles = mockFiles.filter((file) => file.owner !== "me");
+        filteredFiles = ALL_FILES.filter((file) => file.owner !== "me");
         break;
       case "all":
       default:
-        filteredFiles = mockFiles;
+        filteredFiles = ALL_FILES;
         break;
     }
 
@@ -179,7 +170,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Format date for display
   function formatDate(dateString) {
     const date = new Date(dateString);
-    return date.toLocaleDateString();
+    return date.toLocaleTimeString();
   }
 
   // Attach event listeners to file action buttons
@@ -287,7 +278,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // File operations
   function downloadFile(fileId) {
-    const file = mockFiles.find((f) => f.id == fileId);
+    const file = ALL_FILES.find((f) => f.id == fileId);
     showNotification(`Downloading "${file.name}"...`, "info");
 
     // In a real application, this would initiate a file download
@@ -298,8 +289,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function openShareModal(fileId) {
-    currentFileId = fileId;
-    const file = mockFiles.find((f) => f.id == fileId);
+    curFileId = fileId;
+    const file = ALL_FILES.find((f) => f.id == fileId);
 
     // Set file name in modal
     document.getElementById("share-file-name").textContent = file.name;
@@ -370,19 +361,40 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function deleteFile(fileId) {
-    const file = mockFiles.find((f) => f.id == fileId);
+    const file = ALL_FILES.find((f) => f.id == fileId);
 
     // If the file is shared, show a special confirmation
     if (file.shared) {
       showCustomConfirm(
         `This file is shared with other users. Deleting it will revoke access for all users. Are you sure you want to delete "${file.name}"?`,
         function () {
-          // In a real application, this would send a delete request to the server and handle revoking access
-          const index = mockFiles.findIndex((f) => f.id == fileId);
-          if (index !== -1) {
-            mockFiles.splice(index, 1);
-            displayFiles();
+          // Get the file row element
+          const fileRow = document.querySelector(
+            `tr[data-file-id="${fileId}"]`
+          );
+
+          // Add a fade-out animation
+          if (fileRow) {
+            fileRow.style.transition = "opacity 0.5s, transform 0.5s";
+            fileRow.style.opacity = "0";
+            fileRow.style.transform = "translateX(20px)";
           }
+
+          // Wait for animation to complete before removing from data
+          setTimeout(() => {
+            // In a real application, this would send a delete request to the server and handle revoking access
+            const index = ALL_FILES.findIndex((f) => f.id == fileId);
+            if (index !== -1) {
+              ALL_FILES.splice(index, 1);
+              displayFiles();
+
+              // Show notification
+              showNotification(
+                `"${file.name}" has been permanently deleted and all shared access has been revoked.`,
+                "success"
+              );
+            }
+          }, 500); // Match transition duration
         }
       );
     } else {
@@ -390,12 +402,33 @@ document.addEventListener("DOMContentLoaded", () => {
       showCustomConfirm(
         `Are you sure you want to delete "${file.name}"?`,
         function () {
-          // In a real application, this would send a delete request to the server
-          const index = mockFiles.findIndex((f) => f.id == fileId);
-          if (index !== -1) {
-            mockFiles.splice(index, 1);
-            displayFiles();
+          // Get the file row element
+          const fileRow = document.querySelector(
+            `tr[data-file-id="${fileId}"]`
+          );
+
+          // Add a fade-out animation
+          if (fileRow) {
+            fileRow.style.transition = "opacity 0.5s, transform 0.5s";
+            fileRow.style.opacity = "0";
+            fileRow.style.transform = "translateX(20px)";
           }
+
+          // Wait for animation to complete before removing from data
+          setTimeout(() => {
+            // In a real application, this would send a delete request to the server
+            const index = ALL_FILES.findIndex((f) => f.id == fileId);
+            if (index !== -1) {
+              ALL_FILES.splice(index, 1);
+              displayFiles();
+
+              // Show notification
+              showNotification(
+                `"${file.name}" has been permanently deleted.`,
+                "success"
+              );
+            }
+          }, 500); // Match transition duration
         }
       );
     }
@@ -414,7 +447,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Function to remove a shared file from the user's view
   function removeSharedFile(fileId) {
-    const file = mockFiles.find((f) => f.id == fileId);
+    const file = ALL_FILES.find((f) => f.id == fileId);
 
     showCustomConfirm(
       `Are you sure you want to remove "${file.name}" from your files? You will no longer have access to this file.`,
@@ -435,9 +468,9 @@ document.addEventListener("DOMContentLoaded", () => {
         // Wait for animation to complete before removing from data
         setTimeout(() => {
           // For this demo, we'll just remove it from the mockFiles array
-          const index = mockFiles.findIndex((f) => f.id == fileId);
+          const index = ALL_FILES.findIndex((f) => f.id == fileId);
           if (index !== -1) {
-            mockFiles.splice(index, 1);
+            ALL_FILES.splice(index, 1);
             displayFiles();
 
             // Show custom confirmation notification instead of alert
@@ -500,10 +533,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       // In a real application, this would share the file with the user
-      alert(`File shared with ${username}`);
+      const file = ALL_FILES.find((f) => f.id == curFileId);
 
       // Mark the file as shared
-      const file = mockFiles.find((f) => f.id == currentFileId);
       if (file) {
         file.shared = true;
       }
@@ -514,6 +546,12 @@ document.addEventListener("DOMContentLoaded", () => {
       // Clear the form and close the modal
       this.reset();
       shareModal.classList.remove("modal--active");
+
+      // Show notification
+      showNotification(
+        `"${file.name}" has been shared with ${username}.`,
+        "success"
+      );
     });
   }
 
@@ -541,7 +579,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // In a real application, this would upload the file to the server
       // For now, we'll add it to our mock data
       const newFile = {
-        id: mockFiles.length + 1,
+        id: ALL_FILES.length + 1,
         name: file.name,
         owner: "me",
         size: formatFileSize(file.size),
@@ -549,12 +587,18 @@ document.addEventListener("DOMContentLoaded", () => {
         shared: false,
       };
 
-      mockFiles.unshift(newFile);
+      ALL_FILES.unshift(newFile);
 
       // Clear the form, close the modal, and refresh the display
       this.reset();
       uploadModal.classList.remove("modal--active");
       displayFiles();
+
+      // Show notification
+      showNotification(
+        `"${file.name}" has been uploaded successfully.`,
+        "success"
+      );
     });
   }
 
