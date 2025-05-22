@@ -9,3 +9,12 @@ HTML/JS web client for [CloudWorx](https://github.com/Nanda128/CloudWorx-Backend
     <br />
     CloudWorx Website Home Page
 </p>
+
+## Running The App
+This web client is set up using [Express.js](https://expressjs.com). Assuming you have [Node.js](https://nodejs.org/en) installed, you can install the dependencies and run the app using the following commands:
+```sh
+> npm install
+> npm run serve
+```
+
+Then simply navigate to [`localhost:3000`](http://localhost:3000).
