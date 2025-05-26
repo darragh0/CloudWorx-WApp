@@ -39,9 +39,11 @@ chmod +x init.sh && ./init.sh
 
 #### Windows
 ```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 .\init.ps1
 ```
+
+> [!TIP]
+> The script will automatically request administrator privileges if needed.
 
 ### Manual Setup
 

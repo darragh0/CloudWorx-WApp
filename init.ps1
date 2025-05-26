@@ -24,13 +24,26 @@ function Write-Error {
     Write-Host "[CloudWorx Setup :: error]: $Message" -ForegroundColor Red
 }
 
-# Check if running as administrator
+# Check if running as administrator and restart with elevation if needed
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
-    Write-Warning "This script is not running as administrator. Some operations may fail."
-    Write-Warning "Consider running this script as administrator."
-    $continue = Read-Host "Continue anyway? (y/n)"
-    if ($continue -ne "y") {
+    Write-Warning "This script requires administrator privileges."
+    Write-ColorMessage "Attempting to restart with elevated privileges..." "Yellow"
+    
+    # Get the current script path
+    $scriptPath = $MyInvocation.MyCommand.Definition
+    $scriptDir = Split-Path -Parent $scriptPath
+    
+    try {
+        # Start a new PowerShell process with elevated privileges
+        Start-Process PowerShell -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`"" -WorkingDirectory $scriptDir
+        exit
+    }
+    catch {
+        Write-Error "Failed to restart with elevated privileges."
+        Write-Error "Please run this script as administrator manually."
+        Write-Error "Right-click on PowerShell and select 'Run as Administrator', then navigate to the script location and run it."
+        pause
         exit
     }
 }
