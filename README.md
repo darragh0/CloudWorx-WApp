@@ -11,7 +11,11 @@ HTML/JS web client for [CloudWorx](https://github.com/Nanda128/CloudWorx-Backend
 </p>
 
 ## Setup
-Use the [automated setup](#automated-setup) scripts or follow the steps outlined in [Manual Setup](#manual-setup) to setup and run the app manually.
+Follow the steps outlined in [Environment Setup](#environment-setup). After this, use the [automated setup](#automated-setup) scripts, or follow the steps in [Manual Setup](#manual-setup) to setup and run the app manually.
+
+#### Environment Setup
+1. Copy `.env.example` to `.env`.
+2. Contact [darragh0](https://github.com/darragh0) for the actual values and replace the placeholders with them.
 
 ### Automated Setup
 Use [`init.sh`](./init.sh) or [`init.ps1`](./init.ps1) depending on your OS.
@@ -25,23 +29,14 @@ The script will setup the environment, install dependencies, start the server, a
 > ```
 >
 > #### Windows
-> Open PowerShell as Administrator (right-click on PowerShell and select "Run as Administrator")
-> Enable script execution if needed:
+> Open PowerShell as Administrator (right-click on PowerShell and select "Run as Administrator"), enable script execution if needed, and run the script:
 > ```powershell
-> > Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-> ```
-> Navigate to the project directory and run the script:
-> ```powershell
-> > .\init.ps1
+> > Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser && .\init.ps1
 > ```
 
 ### Manual Setup
 
-#### 1. Environment Setup
-1. Copy `.env.example` to `.env`.
-2. Contact [darragh0](https://github.com/darragh0) for the actual values and replace the placeholders with them.
-
-#### 2. Configuring Certificates
+#### 1. Configuring Certificates
 This web client is set up using [Express.js](https://expressjs.com) and is configured to run on HTTPS (see [Why HTTPS?](#why-https)). To ensure your browser accepts the secure connection, we need to generate and trust local TLS certificates for the app.
 
 The following commands show how to do this using [`mkcert`](https://github.com/FiloSottile/mkcert), but you can use a different tool if you prefer.
@@ -62,7 +57,7 @@ The following commands show how to do this using [`mkcert`](https://github.com/F
 > ```
 >
 
-#### 3. Running the App
+#### 2. Running the App
 Assuming you have [Node.js](https://nodejs.org/en) installed, you can install the dependencies and run the app using the following command:
 ```sh
 > npm install && npm run serve
