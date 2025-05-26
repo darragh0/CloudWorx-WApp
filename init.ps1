@@ -232,7 +232,6 @@ Open-Browser "https://localhost:3443"
 
 # Display info to user
 Write-ColorMessage "Server running at https://localhost:3443"
-Write-ColorMessage "Press Ctrl+C to stop the server"
 
 try {
     # Wait for user to press Ctrl+C

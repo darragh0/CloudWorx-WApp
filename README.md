@@ -46,6 +46,15 @@ chmod +x init.sh && ./init.sh
 > [!TIP]
 > The script will automatically request administrator privileges if needed.
 
+#### Windows Subsystem for Linux (WSL)
+If running in WSL, use the Linux script but be aware of special handling:
+```sh
+chmod +x init.sh && ./init.sh
+```
+
+> [!NOTE]
+> The script automatically detects WSL environments and applies special handling for npm installations and browser opening to avoid common issues with Windows/Linux interoperability.
+
 ### Manual Setup
 
 If you prefer to set up the project manually, follow these steps:

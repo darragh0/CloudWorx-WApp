@@ -35,6 +35,14 @@ if [ "$CURRENT_DIR" != "$PROJECT_DIR" ]; then
   pmsg "Current directory is now: $(pwd)"
 fi
 
+# Detect if running in WSL
+IS_WSL=0
+if grep -qi microsoft /proc/version 2>/dev/null; then
+  IS_WSL=1
+  pwarn "Detected Windows Subsystem for Linux (WSL) environment."
+  pwarn "Some special handling will be applied for compatibility."
+fi
+
 # Check if running as root (avoid this for npm installations)
 if [ "$(id -u)" = "0" ]; then
   pwarn "This script is running as root. It's generally not recommended to install npm packages as root."
@@ -162,7 +170,49 @@ if ! command -v npm &> /dev/null; then
   exit 1
 fi
 
+# Special handling for WSL environment
+if [ "$IS_WSL" -eq 1 ]; then
+  pwarn "In WSL, using special npm installation process to avoid path issues..."
+  
+  # Check if the Windows version of npm is available and prefer it for native modules
+  if command -v cmd.exe &> /dev/null; then
+    if cmd.exe /c "where npm" &> /dev/null; then
+      pwarn "Using Windows npm for installation to avoid native module build issues."
+      pwarn "This may take a moment..."
+      
+      # Create a temporary script to run npm install with Windows npm
+      cat > ./.wsl_npm_install.bat << 'EOF'
+@echo off
+cd %~dp0
+echo Installing dependencies with Windows npm...
 npm install
+exit /b %errorlevel%
+EOF
+      
+      # Make the script executable and run it
+      chmod +x ./.wsl_npm_install.bat
+      cmd.exe /c ".\.wsl_npm_install.bat"
+      npm_result=$?
+      rm ./.wsl_npm_install.bat
+      
+      if [ $npm_result -ne 0 ]; then
+        pwarn "Windows npm installation had issues. Trying with Linux npm..."
+        npm install --no-optional
+      fi
+    else
+      # Use Linux npm but skip optional dependencies that might require native builds
+      pwarn "Windows npm not found. Using Linux npm with --no-optional flag..."
+      npm install --no-optional
+    fi
+  else
+    # Fallback to Linux npm with reduced features
+    pwarn "Windows cmd.exe not available. Using Linux npm with --no-optional flag..."
+    npm install --no-optional
+  fi
+else
+  # Normal npm install for non-WSL environments
+  npm install
+fi
 
 pmsg "Setup completed successfully!"
 
@@ -172,6 +222,15 @@ pmsg "Starting the application..."
 # Function to open URL in browser based on OS
 open_browser() {
   local url=$1
+  
+  # For WSL, try to use Windows browser first
+  if [ "$IS_WSL" -eq 1 ]; then
+    if command -v cmd.exe &> /dev/null; then
+      pmsg "Opening browser using Windows explorer..."
+      cmd.exe /c "start $url" &> /dev/null
+      return
+    fi
+  fi
   
   # Try to detect the OS
   case "$(uname -s)" in
@@ -209,7 +268,6 @@ open_browser "https://localhost:3443"
 
 # Display info to user
 pmsg "Server running at https://localhost:3443"
-pmsg "Press Ctrl+C to stop the server"
 
 # Wait for user to press Ctrl+C
 trap "kill $server_pid 2>/dev/null || true; pmsg 'Server stopped.'; exit 0" INT TERM
