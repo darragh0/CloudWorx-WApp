@@ -43,7 +43,7 @@ chmod +x init.sh && ./init.sh
 ```
 
 > [!TIP]
-> The script will automatically request administrator privileges if needed.
+> The script will automatically request administrator privileges if needed and will pause before closing so you can read any messages or errors.
 
 ### Manual Setup
 

@@ -43,8 +43,9 @@ if (-not $isAdmin) {
         Write-Error "Failed to restart with elevated privileges."
         Write-Error "Please run this script as administrator manually."
         Write-Error "Right-click on PowerShell and select 'Run as Administrator', then navigate to the script location and run it."
-        pause
-        exit
+        Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        exit 1
     }
 }
 
@@ -60,7 +61,9 @@ if (-not (Test-Path .env)) {
         Write-Warning "Contact darragh0 (https://github.com/darragh0) for the actual values."
     } else {
         Write-Error ".env.example file not found!"
-        exit
+        Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        exit 1
     }
 } else {
     Write-ColorMessage ".env file already exists."
@@ -75,6 +78,8 @@ if (-not $recaptchaLine) {
     Write-Error "RECAPTCHA_SECRET_KEY is not set in .env file!"
     Write-Error "Please update the .env file with a valid RECAPTCHA_SECRET_KEY."
     Write-Error "Contact darragh0 (https://github.com/darragh0) for the actual value."
+    Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     exit 1
 }
 
@@ -84,6 +89,8 @@ if (-not $recaptchaValue -or $recaptchaValue -eq "your_recaptcha_secret_key_here
     Write-Error "RECAPTCHA_SECRET_KEY in .env file still has the default placeholder value!"
     Write-Error "Please update the .env file with a valid RECAPTCHA_SECRET_KEY."
     Write-Error "Contact darragh0 (https://github.com/darragh0) for the actual value."
+    Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     exit 1
 }
 
@@ -124,9 +131,11 @@ if (-not (Get-Command mkcert -ErrorAction SilentlyContinue)) {
         # Refresh environment variables
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
     } else {
-        Write-Error "Administrator privileges required to install mkcert."
-        Write-Error "Please run this script as administrator or install mkcert manually."
-        exit
+    Write-Error "Administrator privileges required to install mkcert."
+    Write-Error "Please run this script as administrator or install mkcert manually."
+    Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    exit 1
     }
 }
 
@@ -134,7 +143,9 @@ if (-not (Get-Command mkcert -ErrorAction SilentlyContinue)) {
 if (-not (Get-Command mkcert -ErrorAction SilentlyContinue)) {
     Write-Error "Failed to install mkcert. Please install it manually."
     Write-Error "Use: choco install mkcert"
-    exit
+    Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    exit 1
 }
 
 # Install local CA
@@ -155,7 +166,9 @@ Write-ColorMessage "Installing Node.js dependencies..."
 if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
     Write-Error "npm is not installed. Please install Node.js and npm."
     Write-Error "Download from: https://nodejs.org/"
-    exit
+    Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    exit 1
 }
 
 npm install
@@ -207,4 +220,8 @@ try {
         Remove-Job $serverJob
         Write-ColorMessage "Server stopped."
     }
+    
+    # Always pause before closing, in case of unexpected exit
+    Write-Host "`nServer has stopped. Press any key to exit..." -ForegroundColor Cyan
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
