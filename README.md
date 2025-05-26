@@ -7,65 +7,74 @@ HTML/JS web client for [CloudWorx](https://github.com/Nanda128/CloudWorx-Backend
 <p align="center">
     <img alt="Home Page Screenshot" src="./docs/img/png/home.png" />
     <br />
-    CloudWorx Website Home Page
+    <em>CloudWorx Website Home Page</em>
 </p>
 
-## Setup
-Follow the steps outlined in [Environment Setup](#environment-setup). After this, use the [automated setup](#automated-setup) scripts, or follow the steps in [Manual Setup](#manual-setup) to setup and run the app manually.
+## 📋 Quick Start
 
-## Environment Setup
-1. Copy `.env.example` to `.env`.
-2. Contact [darragh0](https://github.com/darragh0) for the actual values and replace the placeholders with them.
+1. **Clone the repository**
+2. **Set up environment**:
+    - Copy `.env.example` to `.env`
+    - Update with valid RECAPTCHA key (contact [darragh0](https://github.com/darragh0))
+3. **Follow [Automated Setup](#automated-setup-recommended) or [Manual Setup](#manual-setup) steps**
 
-### Automated Setup
-Use [`init.sh`](./init.sh) or [`init.ps1`](./init.ps1) depending on your OS.
+## 🔧 Setup Options
 
-The script will setup the environment, install dependencies, start the server, and open the application in your browser.
+### Automated Setup (Recommended)
 
-> #### Linux and macOS
-> Make the script executable and run it:
-> ```sh
-> > chmod +x init.sh && ./init.sh
-> ```
->
-> #### Windows
-> Open PowerShell as Administrator (right-click on PowerShell and select "Run as Administrator"), enable script execution if needed, and run the script:
-> ```powershell
-> > Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser && .\init.ps1
-> ```
+Use [`init.sh`](./init.sh) (Linux/macOS) or [`init.ps1`](./init.ps1) (Windows) to automatically:
+
+- Configure environment
+- Install dependencies
+- Generate certificates
+- Start the server & open the app in your browser
+
+> [!Note]
+> The script will exit with an error if the RECAPTCHA_SECRET_KEY is missing or invalid.
+
+#### Linux and macOS
+```sh
+chmod +x init.sh && ./init.sh
+```
+
+#### Windows
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+.\init.ps1
+```
 
 ### Manual Setup
 
-#### 1. Configuring Certificates
-This web client is set up using [Express.js](https://expressjs.com) and is configured to run on HTTPS (see [Why HTTPS?](#why-https)). To ensure your browser accepts the secure connection, we need to generate and trust local TLS certificates for the app.
+If you prefer to set up the project manually, follow these steps:
 
-The following commands show how to do this using [`mkcert`](https://github.com/FiloSottile/mkcert), but you can use a different tool if you prefer.
+#### 1. Environment Configuration
+- Copy `.env.example` to `.env`
+- Update the RECAPTCHA_SECRET_KEY (contact [darragh0](https://github.com/darragh0))
 
-> You can install `mkcert` using [`chocolatey`](https://chocolatey.org/) or some other package manager. To install using `chocolatey`, run the following in an elevated shell (e.g. Powershell in admin mode).
-> ```sh
-> > choco install mkcert
-> ```
->
-> You can then set up trust on your machine by running the following command, which installs mkcert's local root CA certificate in into your system's and browsers' trusted root certificate stores. 
-> ```sh
-> > mkcert -install
-> ```
->
-> After that, run the following command to generate the key and cert in a new `certs` directory:
-> ```sh
-> > mkdir certs && mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost
-> ```
->
+#### 2. SSL Certificate Setup
+Generate local SSL certificates using [mkcert](https://github.com/FiloSottile/mkcert):
 
-#### 2. Running the App
-Assuming you have [Node.js](https://nodejs.org/en) installed, you can install the dependencies and run the app using the following command:
+**Install mkcert**:
+- Windows (with Chocolatey): `choco install mkcert`
+- macOS (with Homebrew): `brew install mkcert nss`
+- Linux (Debian/Ubuntu): `sudo apt install libnss3-tools` and download mkcert
+
+**Generate certificates**:
 ```sh
-> npm install && npm run serve
+mkcert -install
+mkdir certs && mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost
 ```
-Then simply open [`localhost:3443`](https://localhost:3443) in your browser.
+
+#### 3. Run the Application
+```sh
+npm install && npm run serve
+```
+
+Then open [https://localhost:3443](https://localhost:3443) in your browser.
 
 > [!NOTE]
-> Your browser may throw a "Potential Security Risk Ahead" warning (or similar) when visiting the website. If this doesn't go away after restarting your browser, it can safely be ignored.
+> You may see a security warning in your browser the first time. This is expected with local certificates.
 
-## Why HTTPS?
-The web client requires certain [Web Crypto](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API) APIs such as [`crypto.subtle`](https://developer.mozilla.org/en-US/docs/Web/API/Crypto/subtle), which only works in **secure contexts** (HTTPS).
+## 🔒 Why HTTPS?
+
+This application requires [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API) features like `crypto.subtle`, which only work in secure contexts (HTTPS).

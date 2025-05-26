@@ -50,6 +50,26 @@ else
   pmsg ".env file already exists."
 fi
 
+# Check for valid RECAPTCHA_SECRET_KEY in .env
+pmsg "Checking RECAPTCHA_SECRET_KEY in .env file..."
+RECAPTCHA_VALUE=$(grep -E "^RECAPTCHA_SECRET_KEY=" .env | cut -d '=' -f2)
+
+if [ -z "$RECAPTCHA_VALUE" ]; then
+  perr "RECAPTCHA_SECRET_KEY is not set in .env file!"
+  perr "Please update the .env file with a valid RECAPTCHA_SECRET_KEY."
+  perr "Contact darragh0 (https://github.com/darragh0) for the actual value."
+  exit 1
+fi
+
+if [ "$RECAPTCHA_VALUE" = "your_recaptcha_secret_key_here" ]; then
+  perr "RECAPTCHA_SECRET_KEY in .env file still has the default placeholder value!"
+  perr "Please update the .env file with a valid RECAPTCHA_SECRET_KEY."
+  perr "Contact darragh0 (https://github.com/darragh0) for the actual value."
+  exit 1
+fi
+
+pmsg "RECAPTCHA_SECRET_KEY is set."
+
 # 2. Certificate Setup
 pmsg "Setting up SSL certificates..."
 

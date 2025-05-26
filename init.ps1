@@ -53,6 +53,29 @@ if (-not (Test-Path .env)) {
     Write-ColorMessage ".env file already exists."
 }
 
+# Check for valid RECAPTCHA_SECRET_KEY in .env
+Write-ColorMessage "Checking RECAPTCHA_SECRET_KEY in .env file..."
+$envContent = Get-Content .env -ErrorAction SilentlyContinue
+$recaptchaLine = $envContent | Where-Object { $_ -match "^RECAPTCHA_SECRET_KEY=" }
+
+if (-not $recaptchaLine) {
+    Write-Error "RECAPTCHA_SECRET_KEY is not set in .env file!"
+    Write-Error "Please update the .env file with a valid RECAPTCHA_SECRET_KEY."
+    Write-Error "Contact darragh0 (https://github.com/darragh0) for the actual value."
+    exit 1
+}
+
+$recaptchaValue = $recaptchaLine -replace "^RECAPTCHA_SECRET_KEY=", ""
+
+if (-not $recaptchaValue -or $recaptchaValue -eq "your_recaptcha_secret_key_here") {
+    Write-Error "RECAPTCHA_SECRET_KEY in .env file still has the default placeholder value!"
+    Write-Error "Please update the .env file with a valid RECAPTCHA_SECRET_KEY."
+    Write-Error "Contact darragh0 (https://github.com/darragh0) for the actual value."
+    exit 1
+}
+
+Write-ColorMessage "RECAPTCHA_SECRET_KEY is set."
+
 # 2. Certificate Setup
 Write-ColorMessage "Setting up SSL certificates..."
 
