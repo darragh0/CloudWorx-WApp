@@ -22,6 +22,19 @@ perr() {
   echo -e "${RED}[CloudWorx Setup :: error] $1${NC}"
 }
 
+# Get the script directory regardless of where it's called from
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_DIR="$SCRIPT_DIR"  # The project directory is the same as the script directory
+
+# Check if we're in the project directory, if not, change to it
+CURRENT_DIR="$(pwd)"
+if [ "$CURRENT_DIR" != "$PROJECT_DIR" ]; then
+  pwarn "Script is not running from the project directory."
+  pmsg "Changing directory to: $PROJECT_DIR"
+  cd "$PROJECT_DIR"
+  pmsg "Current directory is now: $(pwd)"
+fi
+
 # Check if running as root (avoid this for npm installations)
 if [ "$(id -u)" = "0" ]; then
   pwarn "This script is running as root. It's generally not recommended to install npm packages as root."
@@ -33,6 +46,17 @@ if [ "$(id -u)" = "0" ]; then
 fi
 
 pmsg "Starting CloudWorx setup..."
+
+# Display and verify current working directory
+CURRENT_DIR="$(pwd)"
+pmsg "Working directory: $CURRENT_DIR"
+
+# Verify we're in the project directory
+if [ ! -f ".env.example" ] && [ ! -f "package.json" ]; then
+  perr "Could not find key project files. This doesn't appear to be the CloudWorx project directory."
+  perr "Current directory: $CURRENT_DIR"
+  exit 1
+fi
 
 # 1. Environment Setup
 pmsg "Setting up environment..."

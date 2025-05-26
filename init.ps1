@@ -26,17 +26,28 @@ function Write-Error {
 
 # Check if running as administrator and restart with elevation if needed
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+# Get the script directory regardless of where it's called from
+$scriptPath = $MyInvocation.MyCommand.Definition
+$scriptDir = Split-Path -Parent $scriptPath
+$projectDir = $scriptDir  # The project directory is the same as the script directory
+
+# Check if we're in the project directory, if not, change to it
+$currentDir = Get-Location
+if ($currentDir.Path -ne $projectDir) {
+    Write-Warning "Script is not running from the project directory."
+    Write-ColorMessage "Changing directory to: $projectDir" "Yellow"
+    Set-Location $projectDir
+    Write-ColorMessage "Current directory is now: $(Get-Location)" "Cyan"
+}
+
 if (-not $isAdmin) {
     Write-Warning "This script requires administrator privileges."
     Write-ColorMessage "Attempting to restart with elevated privileges..." "Yellow"
     
-    # Get the current script path
-    $scriptPath = $MyInvocation.MyCommand.Definition
-    $scriptDir = Split-Path -Parent $scriptPath
-    
     try {
         # Start a new PowerShell process with elevated privileges
-        Start-Process PowerShell -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`"" -WorkingDirectory $scriptDir
+        Start-Process PowerShell -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`"" -WorkingDirectory $projectDir
         exit
     }
     catch {
@@ -50,6 +61,19 @@ if (-not $isAdmin) {
 }
 
 Write-ColorMessage "Starting CloudWorx setup..."
+
+# Display and verify current working directory
+$currentDir = Get-Location
+Write-ColorMessage "Working directory: $currentDir" "Cyan"
+
+# Verify we're in the project directory
+if (!(Test-Path ".env.example") -and !(Test-Path "package.json")) {
+    Write-Error "Could not find key project files. This doesn't appear to be the CloudWorx project directory."
+    Write-Error "Current directory: $currentDir"
+    Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    exit 1
+}
 
 # 1. Environment Setup
 Write-ColorMessage "Setting up environment..."
@@ -193,6 +217,8 @@ function Open-Browser {
 
 # Start the server in a new window
 Write-ColorMessage "Starting server on https://localhost:3443"
+$currentDir = Get-Location
+Write-ColorMessage "Server directory: $currentDir" "Cyan"
 $serverJob = Start-Job -ScriptBlock {
     Set-Location $using:PWD
     npm run serve

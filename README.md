@@ -30,7 +30,8 @@ Use [`init.sh`](./init.sh) (Linux/macOS) or [`init.ps1`](./init.ps1) (Windows) t
 - Start the server & open the app in your browser
 
 > [!Note]
-> The script will exit with an error if the RECAPTCHA_SECRET_KEY is missing or invalid.
+> - The script will exit with an error if the RECAPTCHA_SECRET_KEY is missing or invalid.
+> - Scripts will automatically change to the project directory if run from elsewhere.
 
 #### Linux and macOS
 ```sh
@@ -43,7 +44,7 @@ chmod +x init.sh && ./init.sh
 ```
 
 > [!TIP]
-> The script will automatically request administrator privileges if needed and will pause before closing so you can read any messages or errors.
+> The script will automatically request administrator privileges if needed.
 
 ### Manual Setup
 
