@@ -8,7 +8,9 @@
     <link rel="stylesheet" href="css/index.css" />
     <link
       rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <script src="https://www.google.com/recaptcha/api.js"></script>
   </head>
   <body>
     <nav class="nav">
@@ -17,7 +19,8 @@
           <img
             src="img/webp/cloudworx-logo.webp"
             alt="CloudWorx Logo"
-            class="logo" />
+            class="logo"
+          />
           <div class="app-name">CloudWorx</div>
         </a>
       </div>
@@ -62,8 +65,21 @@
               name="signup-username"
               class="form__input"
               required
-              autocomplete="username" />
+              autocomplete="username"
+            />
             <div class="form__error" id="signup-username-error"></div>
+          </div>
+          <div class="form__group">
+            <label for="signup-email" class="form__label">Email</label>
+            <input
+              type="email"
+              id="signup-email"
+              name="signup-email"
+              class="form__input"
+              required
+              autocomplete="email"
+            />
+            <div class="form__error" id="signup-email-error"></div>
           </div>
           <div class="form__group">
             <label for="signup-password" class="form__label">Password</label>
@@ -73,10 +89,12 @@
               name="signup-password"
               class="form__input"
               required
-              autocomplete="new-password" />
+              autocomplete="new-password"
+            />
             <i
               class="fas fa-eye form__password-toggle"
-              data-target="signup-password"></i>
+              data-target="signup-password"
+            ></i>
             <div class="form__error" id="signup-password-error"></div>
           </div>
           <div class="form__group">
@@ -89,12 +107,20 @@
               name="signup-confirm-password"
               class="form__input"
               required
-              autocomplete="new-password" />
+              autocomplete="new-password"
+            />
             <i
               class="fas fa-eye form__password-toggle"
-              data-target="signup-confirm-password"></i>
+              data-target="signup-confirm-password"
+            ></i>
             <div class="form__error" id="signup-confirm-password-error"></div>
           </div>
+          <div
+            class="g-recaptcha"
+            data-sitekey="6Lco50grAAAAAJB7olRjGyKDCAj2XlMySUTGLOiZ"
+          ></div>
+          <div class="form__error" id="recaptcha-error"></div>
+
           <button type="submit" id="sign-up-submit" class="form__submit">
             Create Account
           </button>
@@ -122,7 +148,8 @@
               name="signin-username"
               class="form__input"
               required
-              autocomplete="username" />
+              autocomplete="username"
+            />
             <div class="form__error" id="signin-username-error"></div>
           </div>
           <div class="form__group">
@@ -133,10 +160,12 @@
               name="signin-password"
               class="form__input"
               required
-              autocomplete="current-password" />
+              autocomplete="current-password"
+            />
             <i
               class="fas fa-eye form__password-toggle"
-              data-target="signin-password"></i>
+              data-target="signin-password"
+            ></i>
             <div class="form__error" id="signin-password-error"></div>
           </div>
           <button type="submit" id="sign-in-submit" class="form__submit">

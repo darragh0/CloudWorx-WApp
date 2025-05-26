@@ -1,4 +1,4 @@
-/*# sourceMappingURL=files.css.map */.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
 /* Color Vars */
 /* Global Styles */
 * {
@@ -392,6 +392,11 @@ body.dark-mode .form__submit:hover {
   font-weight: 500;
 }
 
+.g-recaptcha {
+  margin: auto;
+  margin-top: 1em;
+}
+
 .files-container {
   max-width: 90%;
   margin: 0 auto 100px;
@@ -404,7 +409,8 @@ body.dark-mode .form__submit:hover {
 }
 .files-container .files-filter {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .files-container .files-filter .filter-btn {
   background: transparent;
@@ -414,6 +420,7 @@ body.dark-mode .form__submit:hover {
   font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  margin-bottom: 4px;
 }
 .files-container .files-filter .filter-btn.filter-btn--active {
   background-color: #1a66ff;
@@ -463,11 +470,11 @@ body.dark-mode .form__submit:hover {
   color: #1a66ff;
   background-color: rgba(26, 102, 255, 0.1);
 }
-.files-container .files-table .file-actions button.delete-btn:hover {
-  color: #e74c3c;
-  background-color: rgba(231, 76, 60, 0.1);
+.files-container .files-table .file-actions button.download-btn:hover {
+  color: #2ecc71;
+  background-color: rgba(46, 204, 113, 0.1);
 }
-.files-container .files-table .file-actions button.remove-btn:hover {
+.files-container .files-table .file-actions button.delete-btn:hover {
   color: #e74c3c;
   background-color: rgba(231, 76, 60, 0.1);
 }
@@ -481,12 +488,47 @@ body.dark-mode .form__submit:hover {
   align-items: center;
   gap: 8px;
 }
-.files-container .files-table .file-name .shared-icon {
-  color: #1a66ff;
-  font-size: 0.85rem;
+body.dark-mode .files-container .files-filter .filter-btn {
+  border-color: #2d2d4a;
+  color: #fff;
+}
+body.dark-mode .files-container .files-filter .filter-btn.filter-btn--active {
+  background-color: #549bff;
+  border-color: #549bff;
+  color: #1a1a2e;
+}
+body.dark-mode .files-container .files-filter .filter-btn:hover:not(.filter-btn--active) {
+  background-color: rgba(84, 155, 255, 0.2);
+}
+body.dark-mode .files-container .files-table th {
+  color: #fff;
+  background-color: rgba(45, 45, 74, 0.5);
+}
+body.dark-mode .files-container .files-table td {
+  border-bottom-color: #2d2d4a;
+}
+body.dark-mode .files-container .files-table tr:hover {
+  background-color: #252542;
+}
+body.dark-mode .files-container .files-table .file-actions button {
+  color: #d9d9d9;
+}
+body.dark-mode .files-container .files-table .file-actions button:hover {
+  color: #549bff;
+  background-color: rgba(84, 155, 255, 0.2);
+}
+body.dark-mode .files-container .files-table .file-actions button.download-btn:hover {
+  color: #2ecc71;
+}
+body.dark-mode .files-container .files-table .file-actions button.delete-btn:hover {
+  color: #e74c3c;
+}
+body.dark-mode .files-container .files-table .no-files-message {
+  color: #d9d9d9;
 }
 
 .file-badge {
+  margin-top: 0.2em;
   display: inline-block;
   padding: 2px 6px;
   font-size: 0.75rem;
@@ -501,6 +543,74 @@ body.dark-mode .form__submit:hover {
 .file-badge--owned {
   background-color: rgba(46, 204, 113, 0.2);
   color: #2ecc71;
+}
+
+body.dark-mode .file-badge--shared {
+  background-color: rgba(84, 155, 255, 0.2);
+  color: #87b9ff;
+}
+body.dark-mode .file-badge--owned {
+  background-color: rgba(46, 204, 113, 0.2);
+  color: #54d98c;
+}
+body.dark-mode .share-modal-content .share-file-name span {
+  background: #2d2d4a;
+  color: #fff;
+}
+body.dark-mode .share-modal-content .share-users-list .users-list {
+  border-color: #2d2d4a;
+  background-color: #232339;
+}
+body.dark-mode .share-modal-content .share-users-list .users-list .user-item {
+  border-bottom-color: #2d2d4a;
+}
+body.dark-mode .share-modal-content .share-users-list .users-list .user-item .username {
+  color: #fff;
+}
+body.dark-mode .share-modal-content .share-users-list .users-list .no-users-message {
+  color: #d9d9d9;
+}
+body.dark-mode .custom-confirm__content {
+  background-color: #232339;
+  color: #fff;
+}
+body.dark-mode .custom-confirm__title {
+  color: #fff;
+}
+body.dark-mode .custom-confirm__button--cancel {
+  background-color: #2d2d4a;
+  color: #fff;
+}
+body.dark-mode .custom-confirm__button--cancel:hover {
+  background-color: #40406a;
+}
+body.dark-mode .modal__content {
+  background-color: #232339;
+}
+body.dark-mode .modal__header h2 {
+  color: #fff;
+}
+body.dark-mode .modal__close {
+  color: #fff;
+}
+body.dark-mode .modal .form__label {
+  color: #fff;
+}
+body.dark-mode .modal .form__input {
+  background-color: #1a1a2e;
+  border-color: #2d2d4a;
+  color: #fff;
+}
+body.dark-mode .modal .form__submit {
+  background-color: #549bff;
+  color: #1a1a2e;
+}
+body.dark-mode .modal .form__submit:hover {
+  background-color: #87b9ff;
+}
+body.dark-mode .notification {
+  background-color: #232339;
+  color: #fff;
 }
 
 .share-modal-content .share-file-name {
@@ -692,4 +802,104 @@ body.dark-mode .form__submit:hover {
   border-color: transparent transparent rgba(0, 0, 0, 0.8) transparent;
   margin-bottom: -5px;
   z-index: 10;
+}
+
+.file-drop-area {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 20px;
+  border: 2px dashed #e2e2e2;
+  border-radius: 8px;
+  background-color: rgba(226, 226, 226, 0.1);
+  transition: all 0.3s ease;
+  margin-bottom: 20px;
+}
+.file-drop-area.drag-over {
+  border-color: #1a66ff;
+  background-color: rgba(26, 102, 255, 0.05);
+}
+.file-drop-area .file-drop-icon {
+  font-size: 3rem;
+  color: #1a66ff;
+  margin-bottom: 15px;
+  transition: transform 0.2s ease;
+}
+.drag-over .file-drop-area .file-drop-icon {
+  transform: scale(1.1);
+}
+.file-drop-area .file-drop-message {
+  text-align: center;
+  margin-bottom: 15px;
+}
+.file-drop-area .file-drop-message p {
+  margin: 5px 0;
+  color: #434343;
+}
+.file-drop-area .file-select-button {
+  background: #1a66ff;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+.file-drop-area .file-select-button:hover {
+  background: #004ce6;
+}
+.file-drop-area .selected-file {
+  width: 100%;
+  text-align: center;
+  margin-top: 15px;
+  padding: 8px;
+  border-radius: 4px;
+  display: none;
+}
+.file-drop-area .selected-file.has-file {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(46, 204, 113, 0.1);
+  border: 1px solid rgba(46, 204, 113, 0.3);
+  color: #2ecc71;
+}
+.file-drop-area .selected-file.has-file::before {
+  content: "\f058";
+  font-family: "Font Awesome 5 Free";
+  font-weight: 900;
+  margin-right: 8px;
+}
+
+body.dark-mode .file-drop-area {
+  border-color: #2d2d4a;
+  background-color: rgba(45, 45, 74, 0.2);
+}
+body.dark-mode .file-drop-area.drag-over {
+  border-color: #549bff;
+  background-color: rgba(84, 155, 255, 0.1);
+}
+body.dark-mode .file-drop-area .file-drop-icon {
+  color: #549bff;
+}
+body.dark-mode .file-drop-area .file-drop-message p {
+  color: #d9d9d9;
+}
+body.dark-mode .file-drop-area .file-select-button {
+  background: #549bff;
+}
+body.dark-mode .file-drop-area .file-select-button:hover {
+  background: #87b9ff;
+}
+body.dark-mode .file-drop-area .selected-file.has-file {
+  background: rgba(46, 204, 113, 0.2);
+  border-color: rgba(46, 204, 113, 0.4);
+}
+
+#file-upload-error {
+  font-size: 1rem;
+  margin: auto;
 }/*# sourceMappingURL=files.css.map */

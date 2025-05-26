@@ -1,4 +1,9 @@
 /**
+ * @file util.js – General utility functions.
+ * @author darragh0
+ */
+
+/**
  * Shorthand for `document.getElementById()`.
  *
  * @param {string} id

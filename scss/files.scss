@@ -6,6 +6,12 @@ $error: #e74c3c;
 $success: #2ecc71;
 $info: #3498db;
 
+// Dark mode colors
+$dark-bg: $dbg;
+$dark-border: #2d2d4a;
+$dark-hover: #252542;
+$dark-card: #232339;
+
 .files-container {
   max-width: 90%;
   margin: 0 auto 100px;
@@ -19,7 +25,8 @@ $info: #3498db;
 
   .files-filter {
     display: flex;
-    gap: 10px;
+    gap: 8px;
+    flex-wrap: wrap;
 
     .filter-btn {
       background: transparent;
@@ -29,6 +36,7 @@ $info: #3498db;
       font-size: 0.9rem;
       cursor: pointer;
       transition: all 0.2s ease;
+      margin-bottom: 4px;
 
       &.filter-btn--active {
         background-color: $blue;
@@ -87,12 +95,12 @@ $info: #3498db;
           background-color: rgba($blue, 0.1);
         }
 
-        &.delete-btn:hover {
-          color: $error;
-          background-color: rgba($error, 0.1);
+        &.download-btn:hover {
+          color: $success;
+          background-color: rgba($success, 0.1);
         }
 
-        &.remove-btn:hover {
+        &.delete-btn:hover {
           color: $error;
           background-color: rgba($error, 0.1);
         }
@@ -109,10 +117,63 @@ $info: #3498db;
       display: flex;
       align-items: center;
       gap: 8px;
+    }
+  }
 
-      .shared-icon {
-        color: $blue;
-        font-size: 0.85rem;
+  // Dark mode styles
+  body.dark-mode & {
+    .files-filter {
+      .filter-btn {
+        border-color: $dark-border;
+        color: $dtxt;
+
+        &.filter-btn--active {
+          background-color: $lblue;
+          border-color: $lblue;
+          color: $dark-bg;
+        }
+
+        &:hover:not(.filter-btn--active) {
+          background-color: rgba($lblue, 0.2);
+        }
+      }
+    }
+
+    .files-table {
+      th {
+        color: $dtxt;
+        background-color: rgba($dark-border, 0.5);
+      }
+
+      td {
+        border-bottom-color: $dark-border;
+      }
+
+      tr:hover {
+        background-color: $dark-hover;
+      }
+
+      .file-actions {
+        button {
+          color: darken($dtxt, 15%);
+
+          &:hover {
+            color: $lblue;
+            background-color: rgba($lblue, 0.2);
+          }
+
+          &.download-btn:hover {
+            color: $success;
+          }
+
+          &.delete-btn:hover {
+            color: $error;
+          }
+        }
+      }
+
+      .no-files-message {
+        color: darken($dtxt, 15%);
       }
     }
   }
@@ -120,6 +181,7 @@ $info: #3498db;
 
 // File badges
 .file-badge {
+  margin-top: 0.2em;
   display: inline-block;
   padding: 2px 6px;
   font-size: 0.75rem;
@@ -135,6 +197,113 @@ $info: #3498db;
   &--owned {
     background-color: rgba($success, 0.2);
     color: $success;
+  }
+}
+
+// File badges in dark mode
+body.dark-mode {
+  .file-badge {
+    &--shared {
+      background-color: rgba($lblue, 0.2);
+      color: lighten($lblue, 10%);
+    }
+
+    &--owned {
+      background-color: rgba($success, 0.2);
+      color: lighten($success, 10%);
+    }
+  }
+
+  // Share modal in dark mode
+  .share-modal-content {
+    .share-file-name {
+      span {
+        background: $dark-border;
+        color: $dtxt;
+      }
+    }
+
+    .share-users-list {
+      .users-list {
+        border-color: $dark-border;
+        background-color: $dark-card;
+
+        .user-item {
+          border-bottom-color: $dark-border;
+
+          .username {
+            color: $dtxt;
+          }
+        }
+
+        .no-users-message {
+          color: darken($dtxt, 15%);
+        }
+      }
+    }
+  }
+
+  // Custom confirm dialog in dark mode
+  .custom-confirm {
+    &__content {
+      background-color: $dark-card;
+      color: $dtxt;
+    }
+
+    &__title {
+      color: $dtxt;
+    }
+
+    &__button {
+      &--cancel {
+        background-color: $dark-border;
+        color: $dtxt;
+
+        &:hover {
+          background-color: lighten($dark-border, 10%);
+        }
+      }
+    }
+  }
+
+  // Modal in dark mode
+  .modal {
+    &__content {
+      background-color: $dark-card;
+    }
+
+    &__header h2 {
+      color: $dtxt;
+    }
+
+    &__close {
+      color: $dtxt;
+    }
+
+    .form__label {
+      color: $dtxt;
+    }
+
+    .form__input {
+      background-color: $dark-bg;
+      border-color: $dark-border;
+      color: $dtxt;
+    }
+
+    .form__submit {
+      background-color: $lblue;
+      color: $dark-bg;
+
+      &:hover {
+        background-color: lighten($lblue, 10%);
+      }
+    }
+  }
+
+  // Notification in dark mode
+  .notification {
+    background-color: $dark-card;
+    color: $dtxt;
   }
 }
 
@@ -363,4 +532,126 @@ $info: #3498db;
     margin-bottom: -5px;
     z-index: 10;
   }
+}
+
+// File Drop Area Styles
+.file-drop-area {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 20px;
+  border: 2px dashed $lgrey;
+  border-radius: 8px;
+  background-color: rgba($lgrey, 0.1);
+  transition: all 0.3s ease;
+  margin-bottom: 20px;
+
+  &.drag-over {
+    border-color: $blue;
+    background-color: rgba($blue, 0.05);
+  }
+
+  .file-drop-icon {
+    font-size: 3rem;
+    color: $blue;
+    margin-bottom: 15px;
+    transition: transform 0.2s ease;
+
+    .drag-over & {
+      transform: scale(1.1);
+    }
+  }
+
+  .file-drop-message {
+    text-align: center;
+    margin-bottom: 15px;
+
+    p {
+      margin: 5px 0;
+      color: $ltxt;
+    }
+  }
+
+  .file-select-button {
+    background: $blue;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    font-weight: 500;
+    margin-bottom: 10px;
+
+    &:hover {
+      background: darken($blue, 10%);
+    }
+  }
+
+  .selected-file {
+    width: 100%;
+    text-align: center;
+    margin-top: 15px;
+    padding: 8px;
+    border-radius: 4px;
+    display: none;
+
+    &.has-file {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba($success, 0.1);
+      border: 1px solid rgba($success, 0.3);
+      color: $success;
+
+      &::before {
+        content: "\f058";
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        margin-right: 8px;
+      }
+    }
+  }
+}
+
+// Dark mode styles for file upload
+body.dark-mode {
+  .file-drop-area {
+    border-color: $dark-border;
+    background-color: rgba($dark-border, 0.2);
+
+    &.drag-over {
+      border-color: $lblue;
+      background-color: rgba($lblue, 0.1);
+    }
+
+    .file-drop-icon {
+      color: $lblue;
+    }
+
+    .file-drop-message p {
+      color: darken($dtxt, 15%);
+    }
+
+    .file-select-button {
+      background: $lblue;
+
+      &:hover {
+        background: lighten($lblue, 10%);
+      }
+    }
+
+    .selected-file {
+      &.has-file {
+        background: rgba($success, 0.2);
+        border-color: rgba($success, 0.4);
+      }
+    }
+  }
+}
+
+#file-upload-error {
+  font-size: 1rem;
+  margin: auto;
 }

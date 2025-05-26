@@ -390,4 +390,9 @@ body.dark-mode .form__submit:hover {
 .page-header .__description b {
   color: #2c2c2c;
   font-weight: 500;
+}
+
+.g-recaptcha {
+  margin: auto;
+  margin-top: 1em;
 }/*# sourceMappingURL=common.css.map */

@@ -1,5 +1,10 @@
+/**
+ * @file main.js — Common main JS file for web app.
+ * @author darragh0
+ */
+
 import { fromId, queryAll, regPwToggle, onClick, onKeydown } from "./util.js";
-import { valPw, valUsername } from "./val.js";
+import { valPw, valUsername, valEmail } from "./val.js";
 
 /**
  * Open the given modal.
@@ -48,13 +53,17 @@ function showSuccess(submitBtn, form, modal) {
  *
  * @param {string} elementId
  * @param {string} message
+ * @param {boolean} centered (default: false)
  * @returns {boolean}
  */
-function showErr(elementId, message) {
+function showErr(elementId, message, centered = false) {
   const errorElement = fromId(elementId);
   if (errorElement) {
     errorElement.textContent = message;
     errorElement.classList.add("form__error--visible");
+    if (centered) {
+      errorElement.style.margin = "auto";
+    }
     return false;
   }
   return true;
@@ -155,22 +164,23 @@ document.addEventListener("DOMContentLoaded", () => {
   regModal(showSignin, signinModal);
   regModal(showSignup, signupModal);
 
-  // Close modals with close button
-  closeButtons.forEach((button) => {
-    onClick(button, () => closeAllModals());
-  });
+  // Note: files page has own close button logic
+  if (window.location.pathname !== "/files") {
+    closeButtons.forEach((button) => {
+      onClick(button, () => closeAllModals());
+    });
 
-  // Close modals when clicking outside / when press Esc
-  onKeydown(document, "Escape", () => closeAllModals());
-  onClick(window, (e) => {
-    if (e.target === signupModal) {
-      closeModal(signupModal);
-    }
-    if (e.target === signinModal) {
-      closeModal(signinModal);
-    }
-  });
-
+    // Close modals when clicking outside / when press Esc
+    onKeydown(document, "Escape", () => closeAllModals());
+    onClick(window, (e) => {
+      if (e.target === signupModal) {
+        closeModal(signupModal);
+      }
+      if (e.target === signinModal) {
+        closeModal(signinModal);
+      }
+    });
+  }
   // Update navigation based on auth status
   function updateNavigation(isAuthenticated) {
     const navCenter = document.querySelector(".nav__center");
@@ -210,14 +220,17 @@ document.addEventListener("DOMContentLoaded", () => {
       if (navGetStarted) {
         navGetStarted.textContent = "Sign out";
         navGetStarted.id = "sign-out-btn";
-        navGetStarted.addEventListener("click", (e) => {
+        onClick(navGetStarted, (e) => {
           e.preventDefault();
           localStorage.removeItem("auth");
+          const isFilesPage = window.location.pathname.endsWith("files");
+          const is404Page = window.location.pathname.endsWith("404");
+          console.log(is404Page);
 
-          if (isHomePage) {
-            window.location.reload();
-          } else {
+          if (isFilesPage || is404Page) {
             window.location.href = "/";
+          } else {
+            window.location.reload();
           }
         });
       }
@@ -231,7 +244,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Remove existing event listeners
         heroGetStarted.replaceWith(heroGetStarted.cloneNode(true));
         // Add new event listener
-        fromId("hero-see-files").addEventListener("click", (e) => {
+        onClick(fromId("hero-see-files"), (e) => {
           e.preventDefault();
           window.location.href = "/files";
         });
@@ -256,7 +269,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Reattach event listeners for Get Started
         modifiedBtn.removeEventListener("click", () => {});
-        modifiedBtn.addEventListener("click", (e) => {
+        onClick(modifiedBtn, (e) => {
           e.preventDefault();
           closeAllModals();
           openModal(signupModal);
@@ -272,7 +285,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Remove existing event listeners
         modifiedHeroBtn.replaceWith(modifiedHeroBtn.cloneNode(true));
         // Add new event listener
-        fromId("hero-get-started").addEventListener("click", (e) => {
+        onClick(fromId("hero-get-started"), (e) => {
           e.preventDefault();
           closeAllModals();
           openModal(signupModal);
@@ -292,6 +305,7 @@ document.addEventListener("DOMContentLoaded", () => {
       clearErrs(signupForm);
 
       const username = fromId("signup-username").value;
+      const email = fromId("signup-email").value;
       const password = fromId("signup-password").value;
       const confirmPassword = fromId("signup-confirm-password").value;
 
@@ -301,6 +315,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const usernameResult = valUsername(username);
       if (!usernameResult.valid) {
         isValid = showErr("signup-username-error", usernameResult.message);
+      }
+
+      // Email validation
+      const emailResult = valEmail(email);
+      if (!emailResult.valid) {
+        isValid = showErr("signup-email-error", emailResult.message);
       }
 
       // Password validation
@@ -322,16 +342,6 @@ document.addEventListener("DOMContentLoaded", () => {
         );
       }
 
-      const usernameValidation = valUsername(username);
-      if (!usernameValidation.valid) {
-        isValid = showErr("signup-username-error", usernameValidation.message);
-      }
-
-      const passwordValidation = valPw(password);
-      if (!passwordValidation.valid) {
-        isValid = showErr("signup-password-error", passwordValidation.message);
-      }
-
       if (!isValid) {
         return;
       }
@@ -339,6 +349,16 @@ document.addEventListener("DOMContentLoaded", () => {
       const form = e.target;
       const formData = new FormData(form);
       const data = Object.fromEntries(formData.entries());
+      const captchaResponse = data["g-recaptcha-response"];
+
+      if (!captchaResponse) {
+        isValid = showErr(
+          "recaptcha-error",
+          "Please complete the reCAPTCHA verification",
+          true
+        );
+        return;
+      }
 
       const res = await fetch("/register", {
         method: "POST",
@@ -348,7 +368,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!res.ok) {
         const errorMsg = await res.text();
-        showErr("signup-username-error", errorMsg);
+        // Check if it's a reCAPTCHA error
+        if (errorMsg.includes("reCAPTCHA")) {
+          showErr("recaptcha-error", errorMsg);
+          // Reset reCAPTCHA
+          if (window.grecaptcha) {
+            grecaptcha.reset();
+          }
+        } else {
+          showErr("signup-username-error", errorMsg);
+        }
         return;
       }
 
@@ -365,8 +394,8 @@ document.addEventListener("DOMContentLoaded", () => {
       e.preventDefault();
       clearErrs(signinForm);
 
-      const username = document.getElementById("signin-username").value;
-      const password = document.getElementById("signin-password").value;
+      const username = fromId("signin-username").value;
+      const password = fromId("signin-password").value;
 
       let isValid = true;
 

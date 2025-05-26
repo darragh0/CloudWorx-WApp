@@ -1,6 +1,12 @@
+/**
+ * @file val.js – Validation utilities for username & password.
+ * @author darragh0
+ */
+
 const MAX_LEN = 255;
 
 const USER_RE = /^[a-zA-Z0-9_-]+$/;
+const EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const PW_RE = [
   {
     regex: /.{12,}/,
@@ -80,4 +86,33 @@ function valUsername(username) {
   return { valid: true };
 }
 
-export { valPw, valUsername };
+/**
+ * Validate email format.
+ * @see {@link EMAIL_RE}
+ *
+ * @param {string} email
+ * @returns {valid: boolean, message: string}
+ */
+function valEmail(email) {
+  if (!email) {
+    return { valid: false, message: "Please enter an email address" };
+  }
+
+  if (email.length > MAX_LEN) {
+    return {
+      valid: false,
+      message: "Email must be less than 255 characters",
+    };
+  }
+
+  if (!EMAIL_RE.test(email)) {
+    return {
+      valid: false,
+      message: "Please enter a valid email address",
+    };
+  }
+
+  return { valid: true };
+}
+
+export { valPw, valUsername, valEmail };
