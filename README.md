@@ -47,11 +47,7 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 If you prefer to set up the project manually, follow these steps:
 
-#### 1. Environment Configuration
-- Copy `.env.example` to `.env`
-- Update the RECAPTCHA_SECRET_KEY (contact [darragh0](https://github.com/darragh0))
-
-#### 2. SSL Certificate Setup
+#### 1. SSL Certificate Setup
 Generate local SSL certificates using [mkcert](https://github.com/FiloSottile/mkcert):
 
 **Install mkcert**:
@@ -65,7 +61,7 @@ mkcert -install
 mkdir certs && mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost
 ```
 
-#### 3. Run the Application
+#### 2. Run the Application
 ```sh
 npm install && npm run serve
 ```
