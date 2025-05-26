@@ -13,7 +13,7 @@ HTML/JS web client for [CloudWorx](https://github.com/Nanda128/CloudWorx-Backend
 ## Setup
 Follow the steps outlined in [Environment Setup](#environment-setup). After this, use the [automated setup](#automated-setup) scripts, or follow the steps in [Manual Setup](#manual-setup) to setup and run the app manually.
 
-#### Environment Setup
+## Environment Setup
 1. Copy `.env.example` to `.env`.
 2. Contact [darragh0](https://github.com/darragh0) for the actual values and replace the placeholders with them.
 
