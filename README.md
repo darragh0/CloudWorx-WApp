@@ -22,6 +22,7 @@ The script will setup the environment, install dependencies, start the server, a
 > Make the script executable and run it:
 > ```sh
 > > chmod +x init.sh && ./init.sh
+> ```
 >
 > #### Windows
 > Open PowerShell as Administrator (right-click on PowerShell and select "Run as Administrator")
