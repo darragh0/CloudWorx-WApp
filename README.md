@@ -36,11 +36,8 @@ chmod +x init-scripts/init.sh && ./init-scripts/init.sh
 
 #### Windows
 ```powershell
-Start-Process wt.exe -Verb RunAs -ArgumentList "pwsh -NoExit -Command Set-Location '$PWD' && .\init-scripts\init.ps1"
+.\init-scripts\init.ps1
 ```
-
-> [!NOTE]
-> Administrator privileges are required for the Powershell script.
 
 ### Manual Setup
 

@@ -1,11 +1,6 @@
 #Requires -Version 5.1
-#Requires -RunAsAdministrator
 
 # CloudWorx Setup Script for Windows
-
-param(
-    [switch]$Force
-)
 
 # ============================================================================
 # Error handling and execution policy
@@ -381,6 +376,14 @@ function Install-NodeJS {
 # Main execution
 # ============================================================================
 function Main {
+    # Check if running as admin & restart if not
+    $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+    if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        Write-Info "Restarting script with elevated permissions..."
+        Start-Process wt.exe -Verb RunAs -ArgumentList "pwsh -NoExit -Command Set-Location '$PWD' && $PSScriptRoot\init.ps1" 
+        exit 0
+    }
+
     Show-Banner
     
     Test-SystemRequirements
