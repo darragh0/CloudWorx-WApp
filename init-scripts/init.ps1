@@ -1,27 +1,47 @@
 # CloudWorx Setup Script for Windows
 # Run this script with PowerShell
 
-# Function to print colored messages
+# Function to print colored messages with only the prefix colored
 function Write-ColorMessage {
     param (
         [string]$Message,
         [string]$Color = "Green"
     )
-    Write-Host "[CloudWorx Setup] $Message" -ForegroundColor $Color
+    Write-Host "[CloudWorx Setup]" -ForegroundColor $Color -NoNewline
+    Write-Host " $Message"
 }
 
 function Write-Warning {
     param (
         [string]$Message
     )
-    Write-Host "[CloudWorx Setup :: warning]: $Message" -ForegroundColor Yellow
+    Write-Host "[CloudWorx Setup :: warning]" -ForegroundColor Yellow -NoNewline
+    Write-Host " $Message"
 }
 
 function Write-Error {
     param (
         [string]$Message
     )
-    Write-Host "[CloudWorx Setup :: error]: $Message" -ForegroundColor Red
+    Write-Host "[CloudWorx Setup :: error]" -ForegroundColor Red -NoNewline
+    Write-Host " $Message"
+}
+
+# Function to run a command with dimmed output
+function Invoke-CommandWithDimOutput {
+    param (
+        [scriptblock]$ScriptBlock
+    )
+    Write-Host ""  # Add blank line before command output
+    $output = & $ScriptBlock *>&1
+    foreach ($line in $output) {
+        if ($line -is [System.Management.Automation.ErrorRecord]) {
+            Write-Host $line -ForegroundColor DarkGray
+        } else {
+            Write-Host $line -ForegroundColor DarkGray
+        }
+    }
+    Write-Host ""  # Add blank line after command output
 }
 
 # Check if running as administrator and restart with elevation if needed
@@ -30,7 +50,7 @@ $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIde
 # Get the script directory regardless of where it's called from
 $scriptPath = $MyInvocation.MyCommand.Definition
 $scriptDir = Split-Path -Parent $scriptPath
-$projectDir = $scriptDir  # The project directory is the same as the script directory
+$projectDir = Split-Path -Parent $scriptDir  # The project directory is one level up from the script directory
 
 # Check if we're in the project directory, if not, change to it
 $currentDir = Get-Location
@@ -140,9 +160,12 @@ if (-not (Get-Command mkcert -ErrorAction SilentlyContinue)) {
         }
         
         # Install Chocolatey
+        Write-ColorMessage "Installing Chocolatey..." "Yellow"
         Set-ExecutionPolicy Bypass -Scope Process -Force
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-        Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+        Invoke-CommandWithDimOutput { 
+            Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+        }
         
         # Refresh environment variables
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
@@ -151,7 +174,7 @@ if (-not (Get-Command mkcert -ErrorAction SilentlyContinue)) {
     # Install mkcert using Chocolatey
     Write-ColorMessage "Installing mkcert using Chocolatey..."
     if ($isAdmin) {
-        choco install mkcert -y
+        Invoke-CommandWithDimOutput { choco install mkcert -y }
         # Refresh environment variables
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
     } else {
@@ -174,14 +197,14 @@ if (-not (Get-Command mkcert -ErrorAction SilentlyContinue)) {
 
 # Install local CA
 Write-ColorMessage "Installing local CA..."
-mkcert -install
+Invoke-CommandWithDimOutput { mkcert -install }
 
 # Generate certificates
 Write-ColorMessage "Generating certificates for localhost..."
 if (-not (Test-Path certs)) {
     New-Item -ItemType Directory -Path certs | Out-Null
 }
-mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost
+Invoke-CommandWithDimOutput { mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost }
 
 # 3. Install dependencies and run app
 Write-ColorMessage "Installing Node.js dependencies..."
@@ -195,7 +218,8 @@ if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-npm install
+Write-ColorMessage "Installing dependencies..."
+Invoke-CommandWithDimOutput { npm install }
 
 Write-ColorMessage "Setup completed successfully!"
 
@@ -219,15 +243,30 @@ function Open-Browser {
 Write-ColorMessage "Starting server on https://localhost:3443"
 $currentDir = Get-Location
 Write-ColorMessage "Server directory: $currentDir" "Cyan"
+
+# Capture server output to a temp file
+$tempFile = [System.IO.Path]::GetTempFileName()
+
 $serverJob = Start-Job -ScriptBlock {
     Set-Location $using:PWD
-    npm run serve
+    # Redirect output to temp file
+    npm run serve *> $using:tempFile
 }
 
 # Give the server a moment to start
 Start-Sleep -Seconds 3
 
+# Show the server output with dimmed formatting
+if (Test-Path $tempFile) {
+    Write-Host ""  # Add blank line before server output
+    Get-Content $tempFile | ForEach-Object {
+        Write-Host $_ -ForegroundColor DarkGray
+    }
+    Write-Host ""  # Add blank line after server output
+}
+
 # Open the browser
+Write-ColorMessage "Opening browser..."
 Open-Browser "https://localhost:3443"
 
 # Display info to user

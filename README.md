@@ -25,7 +25,7 @@ HTML/JS web client for [CloudWorx](https://github.com/Nanda128/CloudWorx-Backend
 
 ### Automated Setup (Recommended)
 
-Use [`init.sh`](./init.sh) (Linux/macOS) or [`init.ps1`](./init.ps1) (Windows) to automatically:
+Use [`init-scripts/init.sh`](./init-scripts/init.sh) (Linux/macOS) or [`init-scripts/init.ps1`](./init-scripts/init.ps1) (Windows) to automatically:
 
 - Configure environment
 - Install dependencies
@@ -33,37 +33,24 @@ Use [`init.sh`](./init.sh) (Linux/macOS) or [`init.ps1`](./init.ps1) (Windows) t
 - Start the server & open the app in your browser
 
 > [!Note]
-> - The script will exit with an error if the RECAPTCHA_SECRET_KEY is missing or invalid.
-> - Scripts will automatically change to the project directory if run from elsewhere.
+> The script will exit with an error if the RECAPTCHA_SECRET_KEY is missing or invalid.
 
 #### Linux and macOS
 ```sh
-chmod +x init.sh && ./init.sh
+chmod +x init-scripts/init.sh && ./init-scripts/init.sh
 ```
 
 #### Windows
 ```powershell
-.\init.ps1
+.\init-scripts\init.ps1
 ```
 
 > [!TIP]
 > The script will automatically request administrator privileges if needed.
 
-#### Windows Subsystem for Linux (WSL)
-If running in WSL, first install Node.js in the Linux environment:
-```sh
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs
-```
-
-Then run the initialization script:
-```sh
-chmod +x init.sh && ./init.sh
-```
-
 ### Manual Setup
 
-If you prefer to set up the project manually, follow these steps:
+If you prefer to set up the project manually, follow these steps (assuming you have [Node.js](https://nodejs.org/en) installed):
 
 #### 1. SSL Certificate Setup
 Generate local SSL certificates using [mkcert](https://github.com/FiloSottile/mkcert):

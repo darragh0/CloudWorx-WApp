@@ -7,23 +7,35 @@ set -e  # Exit on error
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
+DIM='\033[2m'
 NC='\033[0m'
 
+# Function to print colored messages
 pmsg() {
-  echo -e "${GREEN}[CloudWorx Setup] $1${NC}"
+  echo -e "${GREEN}[CloudWorx Setup]${NC} $1"
 }
 
 pwarn() {
-  echo -e "${YELLOW}[CloudWorx Setup :: warning] $1${NC}"
+  echo -e "${YELLOW}[CloudWorx Setup :: warning]${NC} $1"
 }
 
 perr() {
-  echo -e "${RED}[CloudWorx Setup :: error] $1${NC}"
+  echo -e "${RED}[CloudWorx Setup :: error]${NC} $1"
+}
+
+# Function to dim the output of commands
+dim_output() {
+  "$@" 2>&1 | sed "s/^/${DIM}/" | sed "s/$/${NC}/"
+}
+
+# Function to execute commands with dimmed output
+run_cmd() {
+  eval "$@" 2>&1 | sed "s/^/${DIM}/" | sed "s/$/${NC}/"
 }
 
 # Get the script directory regardless of where it's called from
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PROJECT_DIR="$SCRIPT_DIR"  # The project directory is the same as the script directory
+PROJECT_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"  # The project directory is one level up from the script directory
 
 # Check if we're in the project directory, if not, change dir
 CURRENT_DIR="$(pwd)"
@@ -157,12 +169,16 @@ fi
 
 # Install local CA
 pmsg "Installing local CA..."
-mkcert -install
+echo # Add a blank line before command output
+dim_output mkcert -install
+echo # Add a blank line after command output
 
 # Generate certificates
 pmsg "Generating certificates for localhost..."
+echo # Add a blank line before command output
 mkdir -p certs
-mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost
+dim_output mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost
+echo # Add a blank line after command output
 
 # 3. Install dependencies and run app
 pmsg "Installing Node.js dependencies..."
@@ -174,8 +190,10 @@ if ! command -v npm &> /dev/null; then
   if [ "$IS_WSL" -eq 1 ] || command -v apt-get &> /dev/null; then
     # Install Node.js using apt (for Debian/Ubuntu/WSL)
     pmsg "Installing Node.js using apt..."
-    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash - &> /dev/null
-    sudo apt-get install -y nodejs
+    echo # Add a blank line before command output
+    dim_output curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+    dim_output sudo apt-get install -y nodejs
+    echo # Add a blank line after command output
     
     # Verify installation
     if ! command -v npm &> /dev/null; then
@@ -188,8 +206,10 @@ if ! command -v npm &> /dev/null; then
   elif command -v yum &> /dev/null; then
     # Install Node.js using yum (for CentOS/RHEL/Fedora)
     pmsg "Installing Node.js using yum..."
-    curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo -E bash - &> /dev/null
-    sudo yum install -y nodejs
+    echo # Add a blank line before command output
+    dim_output curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo -E bash -
+    dim_output sudo yum install -y nodejs
+    echo # Add a blank line after command output
     
     # Verify installation
     if ! command -v npm &> /dev/null; then
@@ -202,7 +222,9 @@ if ! command -v npm &> /dev/null; then
   elif command -v brew &> /dev/null; then
     # Install Node.js using Homebrew (for macOS)
     pmsg "Installing Node.js using Homebrew..."
-    brew install node
+    echo # Add a blank line before command output
+    dim_output brew install node
+    echo # Add a blank line after command output
     
     # Verify installation
     if ! command -v npm &> /dev/null; then
@@ -225,8 +247,10 @@ if [ "$IS_WSL" -eq 1 ]; then
   NPM_PATH=$(which npm)
   if [[ "$NPM_PATH" == *"/mnt/c/"* ]] || [[ "$NPM_PATH" == *"/c/"* ]]; then
     pmsg "Detected Windows npm in WSL environment. Installing Linux Node.js instead..."
-    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash - &> /dev/null
-    sudo apt-get install -y nodejs
+    echo # Add a blank line before command output
+    dim_output curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+    dim_output sudo apt-get install -y nodejs
+    echo # Add a blank line after command output
     
     # Verify installation
     if ! command -v npm &> /dev/null; then
@@ -254,16 +278,28 @@ if [ "$IS_WSL" -eq 1 ]; then
   
   # Try to install without sudo first
   pmsg "Installing dependencies..."
-  if npm install --no-optional; then
+  echo # Add a blank line before command output
+  if dim_output npm install --no-optional; then
+    echo # Add a blank line after command output
     pmsg "Dependencies installed successfully."
   else
-    pwarn "Permission issues detected. Trying with sudo..."
-    # If normal install fails, use sudo
-    sudo npm install --no-optional
+    echo # Add a blank line after command output
+    pwarn "Permission issues detected. Trying with elevated permissions..."
+    echo # Add a blank line before command output
+    if dim_output sudo npm install --no-optional; then
+      echo # Add a blank line after command output
+      pmsg "Dependencies installed successfully."
+    else
+      echo # Add a blank line after command output
+      perr "Failed to install dependencies. Please check the error messages above."
+      exit 1
+    fi
   fi
 else
   # Normal npm install for non-WSL environments
-  npm install
+  echo # Add a blank line before command output
+  dim_output npm install
+  echo # Add a blank line after command output
 fi
 
 pmsg "Setup completed successfully!"
@@ -320,22 +356,26 @@ open_browser() {
 
 # Start the server in the background
 pmsg "Starting server on https://localhost:3443"
+echo # Add a blank line before server output
+
+# Redirect server output to a temp file
+SERVER_LOG=$(mktemp)
 
 # Check if we might need sudo for port access
 if [ "$IS_WSL" -eq 1 ] || [ "$(id -u)" != "0" ]; then
   # Try to start normally first
-  npm run serve &
+  npm run serve > "$SERVER_LOG" 2>&1 &
   server_pid=$!
   
   # Check if the server started successfully
   sleep 2
   if ! kill -0 $server_pid 2>/dev/null; then
     pwarn "Failed to start server normally, trying with elevated permissions..."
-    sudo npm run serve &
+    sudo npm run serve > "$SERVER_LOG" 2>&1 &
     server_pid=$!
   fi
 else
-  npm run serve &
+  npm run serve > "$SERVER_LOG" 2>&1 &
   server_pid=$!
 fi
 
@@ -343,8 +383,13 @@ fi
 sleep 2
 if ! kill -0 $server_pid 2>/dev/null; then
   perr "Failed to start the server. Please check the logs for errors."
+  cat "$SERVER_LOG" | sed "s/^/${DIM}/" | sed "s/$/${NC}/"
+  rm -f "$SERVER_LOG"
   exit 1
 else
+  # Show the dimmed server output
+  cat "$SERVER_LOG" | sed "s/^/${DIM}/" | sed "s/$/${NC}/"
+  rm -f "$SERVER_LOG"
   pmsg "Server started successfully with PID: $server_pid"
 fi
 
