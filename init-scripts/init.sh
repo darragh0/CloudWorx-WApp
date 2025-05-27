@@ -83,12 +83,21 @@ fi
 
 # 1. Environment Setup
 pmsg "Setting up environment..."
+
+# Function to handle reCAPTCHA key errors
+recaptcha_error() {
+  local reason=$1
+  perr "$reason"
+  perr "Please update the .env file with a valid RECAPTCHA_SECRET_KEY."
+  perr "Contact darragh0 (https://github.com/darragh0) for the actual value."
+  exit 1
+}
+
 if [ ! -f .env ]; then
   if [ -f .env.example ]; then
     cp .env.example .env
     pmsg "Created .env file from template."
-    pwarn "You need to update the RECAPTCHA_SECRET_KEY in the .env file."
-    pwarn "Contact darragh0 (https://github.com/darragh0) for the actual values."
+    pwarn "Remember to set a valid RECAPTCHA_SECRET_KEY in the .env file."
   else
     perr ".env.example file not found!"
     exit 1
@@ -102,17 +111,11 @@ pmsg "Checking RECAPTCHA_SECRET_KEY in .env file..."
 RECAPTCHA_VALUE=$(grep -E "^RECAPTCHA_SECRET_KEY=" .env | cut -d '=' -f2)
 
 if [ -z "$RECAPTCHA_VALUE" ]; then
-  perr "RECAPTCHA_SECRET_KEY is not set in .env file!"
-  perr "Please update the .env file with a valid RECAPTCHA_SECRET_KEY."
-  perr "Contact darragh0 (https://github.com/darragh0) for the actual value."
-  exit 1
+  recaptcha_error "RECAPTCHA_SECRET_KEY is not set in .env file!"
 fi
 
 if [ "$RECAPTCHA_VALUE" = "your_recaptcha_secret_key_here" ]; then
-  perr "RECAPTCHA_SECRET_KEY in .env file still has the default placeholder value!"
-  perr "Please update the .env file with a valid RECAPTCHA_SECRET_KEY."
-  perr "Contact darragh0 (https://github.com/darragh0) for the actual value."
-  exit 1
+  recaptcha_error "RECAPTCHA_SECRET_KEY in .env file still has the default placeholder value!"
 fi
 
 pmsg "RECAPTCHA_SECRET_KEY is set."

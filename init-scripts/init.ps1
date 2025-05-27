@@ -56,14 +56,14 @@ $projectDir = Split-Path -Parent $scriptDir  # The project directory is one leve
 $currentDir = Get-Location
 if ($currentDir.Path -ne $projectDir) {
     Write-Warning "Script is not running from the project directory."
-    Write-ColorMessage "Changing directory to: $projectDir" "Yellow"
+    Write-ColorMessage "Changing directory to: $projectDir" "Cyan"
     Set-Location $projectDir
     Write-ColorMessage "Current directory is now: $(Get-Location)" "Cyan"
 }
 
 if (-not $isAdmin) {
     Write-Warning "This script requires administrator privileges."
-    Write-ColorMessage "Attempting to restart with elevated privileges..." "Yellow"
+    Write-ColorMessage "Attempting to restart with elevated privileges..." "Cyan"
     
     try {
         # Start a new PowerShell process with elevated privileges
@@ -97,12 +97,25 @@ if (!(Test-Path ".env.example") -and !(Test-Path "package.json")) {
 
 # 1. Environment Setup
 Write-ColorMessage "Setting up environment..."
+
+# Function to handle reCAPTCHA key errors
+function Show-RecaptchaError {
+    param (
+        [string]$Reason
+    )
+    Write-Error $Reason
+    Write-Error "Please update the .env file with a valid RECAPTCHA_SECRET_KEY."
+    Write-Error "Contact darragh0 (https://github.com/darragh0) for the actual value."
+    Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    exit 1
+}
+
 if (-not (Test-Path .env)) {
     if (Test-Path .env.example) {
         Copy-Item .env.example .env
         Write-ColorMessage "Created .env file from template."
-        Write-Warning "You need to update the RECAPTCHA_SECRET_KEY in the .env file."
-        Write-Warning "Contact darragh0 (https://github.com/darragh0) for the actual values."
+        Write-Warning "Remember to set a valid RECAPTCHA_SECRET_KEY in the .env file."
     } else {
         Write-Error ".env.example file not found!"
         Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
@@ -119,24 +132,16 @@ $envContent = Get-Content .env -ErrorAction SilentlyContinue
 $recaptchaLine = $envContent | Where-Object { $_ -match "^RECAPTCHA_SECRET_KEY=" }
 
 if (-not $recaptchaLine) {
-    Write-Error "RECAPTCHA_SECRET_KEY is not set in .env file!"
-    Write-Error "Please update the .env file with a valid RECAPTCHA_SECRET_KEY."
-    Write-Error "Contact darragh0 (https://github.com/darragh0) for the actual value."
-    Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-    exit 1
+    Show-RecaptchaError "RECAPTCHA_SECRET_KEY is not set in .env file!"
 }
 
 $recaptchaValue = $recaptchaLine -replace "^RECAPTCHA_SECRET_KEY=", ""
 
 if (-not $recaptchaValue -or $recaptchaValue -eq "your_recaptcha_secret_key_here") {
-    Write-Error "RECAPTCHA_SECRET_KEY in .env file still has the default placeholder value!"
-    Write-Error "Please update the .env file with a valid RECAPTCHA_SECRET_KEY."
-    Write-Error "Contact darragh0 (https://github.com/darragh0) for the actual value."
-    Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-    exit 1
+    Show-RecaptchaError "RECAPTCHA_SECRET_KEY in .env file still has the default placeholder value!"
 }
+
+Write-ColorMessage "RECAPTCHA_SECRET_KEY is set."
 
 Write-ColorMessage "RECAPTCHA_SECRET_KEY is set."
 
