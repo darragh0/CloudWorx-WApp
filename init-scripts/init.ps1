@@ -27,34 +27,13 @@ function Write-Error {
     Write-Host " $Message"
 }
 
-# Function to run a command with dimmed output
-function Invoke-CommandWithDimOutput {
+# Function to run a command and display output normally
+function Invoke-CommandWithOutput {
     param (
         [scriptblock]$ScriptBlock
     )
     Write-Host ""  # Add blank line before command output
-    
-    # Run the command and capture its output
-    $output = & $ScriptBlock *>&1
-    
-    # Process each line of output
-    foreach ($line in $output) {
-        # Clean up the output by removing control characters and strange formatting
-        if ($line -is [System.Management.Automation.ErrorRecord]) {
-            # For error records, convert to string first
-            $cleanLine = "$line" -replace '\e\[\d+m', '' -replace '[^\x20-\x7E]', ''
-            if ($cleanLine.Trim() -ne "") {
-                Write-Host $cleanLine -ForegroundColor DarkGray
-            }
-        } else {
-            # For normal output
-            $cleanLine = "$line" -replace '\e\[\d+m', '' -replace '[^\x20-\x7E]', ''
-            if ($cleanLine.Trim() -ne "") {
-                Write-Host $cleanLine -ForegroundColor DarkGray
-            }
-        }
-    }
-    
+    & $ScriptBlock
     Write-Host ""  # Add blank line after command output
 }
 
@@ -70,14 +49,14 @@ $projectDir = Split-Path -Parent $scriptDir  # The project directory is one leve
 $currentDir = Get-Location
 if ($currentDir.Path -ne $projectDir) {
     Write-Warning "Script is not running from the project directory."
-    Write-ColorMessage "Changing directory to: $projectDir" "Cyan"
+    Write-ColorMessage "Changing directory to: $projectDir" "Green"
     Set-Location $projectDir
-    Write-ColorMessage "Current directory is now: $(Get-Location)" "Cyan"
+    Write-ColorMessage "Current directory is now: $(Get-Location)" "Green"
 }
 
 if (-not $isAdmin) {
     Write-Warning "This script requires administrator privileges."
-    Write-ColorMessage "Attempting to restart with elevated privileges..." "Cyan"
+    Write-ColorMessage "Attempting to restart with elevated privileges..." "Green"
     
     try {
         # Start a new PowerShell process with elevated privileges
@@ -88,7 +67,7 @@ if (-not $isAdmin) {
         Write-Error "Failed to restart with elevated privileges."
         Write-Error "Please run this script as administrator manually."
         Write-Error "Right-click on PowerShell and select 'Run as Administrator', then navigate to the script location and run it."
-        Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+        Write-Host "`nPress any key to exit..." -ForegroundColor Green
         $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         exit 1
     }
@@ -98,13 +77,13 @@ Write-ColorMessage "Starting CloudWorx setup..."
 
 # Display and verify current working directory
 $currentDir = Get-Location
-Write-ColorMessage "Working directory: $currentDir" "Cyan"
+Write-ColorMessage "Working directory: $currentDir" "Green"
 
 # Verify we're in the project directory
 if (!(Test-Path ".env.example") -and !(Test-Path "package.json")) {
     Write-Error "Could not find key project files. This doesn't appear to be the CloudWorx project directory."
     Write-Error "Current directory: $currentDir"
-    Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+    Write-Host "`nPress any key to exit..." -ForegroundColor Green
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     exit 1
 }
@@ -120,7 +99,7 @@ function Show-RecaptchaError {
     Write-Error $Reason
     Write-Error "Please update the .env file with a valid RECAPTCHA_SECRET_KEY."
     Write-Error "Contact darragh0 (https://github.com/darragh0) for the actual value."
-    Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+    Write-Host "`nPress any key to exit..." -ForegroundColor Green
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     exit 1
 }
@@ -132,7 +111,7 @@ if (-not (Test-Path .env)) {
         Write-Warning "Remember to set a valid RECAPTCHA_SECRET_KEY in the .env file."
     } else {
         Write-Error ".env.example file not found!"
-        Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+        Write-Host "`nPress any key to exit..." -ForegroundColor Green
         $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         exit 1
     }
@@ -180,7 +159,7 @@ if (-not (Get-Command mkcert -ErrorAction SilentlyContinue)) {
         Write-ColorMessage "Installing Chocolatey..." "Yellow"
         Set-ExecutionPolicy Bypass -Scope Process -Force
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-        Invoke-CommandWithDimOutput { 
+        Invoke-CommandWithOutput { 
             Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
         }
         
@@ -191,13 +170,13 @@ if (-not (Get-Command mkcert -ErrorAction SilentlyContinue)) {
     # Install mkcert using Chocolatey
     Write-ColorMessage "Installing mkcert using Chocolatey..."
     if ($isAdmin) {
-        Invoke-CommandWithDimOutput { choco install mkcert -y }
+        Invoke-CommandWithOutput { choco install mkcert -y }
         # Refresh environment variables
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
     } else {
     Write-Error "Administrator privileges required to install mkcert."
     Write-Error "Please run this script as administrator or install mkcert manually."
-    Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+    Write-Host "`nPress any key to exit..." -ForegroundColor Green
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     exit 1
     }
@@ -207,21 +186,21 @@ if (-not (Get-Command mkcert -ErrorAction SilentlyContinue)) {
 if (-not (Get-Command mkcert -ErrorAction SilentlyContinue)) {
     Write-Error "Failed to install mkcert. Please install it manually."
     Write-Error "Use: choco install mkcert"
-    Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+    Write-Host "`nPress any key to exit..." -ForegroundColor Green
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     exit 1
 }
 
 # Install local CA
 Write-ColorMessage "Installing local CA..."
-Invoke-CommandWithDimOutput { mkcert -install }
+Invoke-CommandWithOutput { mkcert -install }
 
 # Generate certificates
 Write-ColorMessage "Generating certificates for localhost..."
 if (-not (Test-Path certs)) {
     New-Item -ItemType Directory -Path certs | Out-Null
 }
-Invoke-CommandWithDimOutput { mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost }
+Invoke-CommandWithOutput { mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost }
 
 # 3. Install dependencies and run app
 Write-ColorMessage "Checking for Node.js..."
@@ -234,13 +213,13 @@ function Install-NodeJS {
     if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
         Write-Error "Chocolatey is required to install Node.js automatically."
         Write-Error "Please install Node.js manually from https://nodejs.org/"
-        Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+        Write-Host "`nPress any key to exit..." -ForegroundColor Green
         $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         exit 1
     }
     
     # Install Node.js using Chocolatey
-    Invoke-CommandWithDimOutput { choco install nodejs-lts -y }
+    Invoke-CommandWithOutput { choco install nodejs-lts -y }
     
     # Refresh environment variables
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
@@ -249,7 +228,7 @@ function Install-NodeJS {
     if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
         Write-Error "Failed to install Node.js. Please install it manually."
         Write-Error "Download from: https://nodejs.org/"
-        Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+        Write-Host "`nPress any key to exit..." -ForegroundColor Green
         $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         exit 1
     }
@@ -268,7 +247,7 @@ else {
 }
 
 Write-ColorMessage "Installing dependencies..."
-Invoke-CommandWithDimOutput { npm install }
+Invoke-CommandWithOutput { npm install }
 
 Write-ColorMessage "Setup completed successfully!"
 
@@ -291,7 +270,7 @@ function Open-Browser {
 # Start the server in a new window
 Write-ColorMessage "Starting server on https://localhost:3443"
 $currentDir = Get-Location
-Write-ColorMessage "Server directory: $currentDir" "Cyan"
+Write-ColorMessage "Server directory: $currentDir" "Green"
 
 # Start the server in a background job
 $serverJob = Start-Job -ScriptBlock {
@@ -307,11 +286,7 @@ $output = Receive-Job -Job $serverJob -Keep
 if ($output) {
     Write-Host ""  # Add blank line before server output
     foreach ($line in $output) {
-        # Clean up the output
-        $cleanLine = "$line" -replace '\e\[\d+m', '' -replace '[^\x20-\x7E]', ''
-        if ($cleanLine.Trim() -ne "") {
-            Write-Host $cleanLine -ForegroundColor DarkGray
-        }
+        Write-Host $line
     }
     Write-Host ""  # Add blank line after server output
 }
@@ -337,6 +312,6 @@ try {
     }
     
     # Always pause before closing, in case of unexpected exit
-    Write-Host "`nServer has stopped. Press any key to exit..." -ForegroundColor Cyan
+    Write-Host "`nServer has stopped. Press any key to exit..." -ForegroundColor Green
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }

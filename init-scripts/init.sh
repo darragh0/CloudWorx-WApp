@@ -7,7 +7,6 @@ set -e  # Exit on error
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
-DIM='\033[2m'
 NC='\033[0m'
 
 # Function to print colored messages
@@ -21,16 +20,6 @@ pwarn() {
 
 perr() {
   echo -e "${RED}[CloudWorx Setup :: error]${NC} $1"
-}
-
-# Function to dim the output of commands
-dim_output() {
-  "$@" 2>&1 | sed "s/^/${DIM}/" | sed "s/$/${NC}/"
-}
-
-# Function to execute commands with dimmed output
-run_cmd() {
-  eval "$@" 2>&1 | sed "s/^/${DIM}/" | sed "s/$/${NC}/"
 }
 
 # Get the script directory regardless of where it's called from
@@ -173,14 +162,15 @@ fi
 # Install local CA
 pmsg "Installing local CA..."
 echo # Add a blank line before command output
-dim_output mkcert -install
+mkcert -install
 echo # Add a blank line after command output
 
 # Generate certificates
 pmsg "Generating certificates for localhost..."
 echo # Add a blank line before command output
 mkdir -p certs
-dim_output mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost
+mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost
+echo # Add a blank line after command output
 echo # Add a blank line after command output
 
 # 3. Install dependencies and run app
@@ -194,8 +184,8 @@ if ! command -v npm &> /dev/null; then
     # Install Node.js using apt (for Debian/Ubuntu/WSL)
     pmsg "Installing Node.js using apt..."
     echo # Add a blank line before command output
-    dim_output curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-    dim_output sudo apt-get install -y nodejs
+    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+    sudo apt-get install -y nodejs
     echo # Add a blank line after command output
     
     # Verify installation
@@ -210,8 +200,8 @@ if ! command -v npm &> /dev/null; then
     # Install Node.js using yum (for CentOS/RHEL/Fedora)
     pmsg "Installing Node.js using yum..."
     echo # Add a blank line before command output
-    dim_output curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo -E bash -
-    dim_output sudo yum install -y nodejs
+    curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo -E bash -
+    sudo yum install -y nodejs
     echo # Add a blank line after command output
     
     # Verify installation
@@ -226,7 +216,7 @@ if ! command -v npm &> /dev/null; then
     # Install Node.js using Homebrew (for macOS)
     pmsg "Installing Node.js using Homebrew..."
     echo # Add a blank line before command output
-    dim_output brew install node
+    brew install node
     echo # Add a blank line after command output
     
     # Verify installation
@@ -251,8 +241,8 @@ if [ "$IS_WSL" -eq 1 ]; then
   if [[ "$NPM_PATH" == *"/mnt/c/"* ]] || [[ "$NPM_PATH" == *"/c/"* ]]; then
     pmsg "Detected Windows npm in WSL environment. Installing Linux Node.js instead..."
     echo # Add a blank line before command output
-    dim_output curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-    dim_output sudo apt-get install -y nodejs
+    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+    sudo apt-get install -y nodejs
     echo # Add a blank line after command output
     
     # Verify installation
@@ -282,14 +272,14 @@ if [ "$IS_WSL" -eq 1 ]; then
   # Try to install without sudo first
   pmsg "Installing dependencies..."
   echo # Add a blank line before command output
-  if dim_output npm install --no-optional; then
+  if npm install --no-optional; then
     echo # Add a blank line after command output
     pmsg "Dependencies installed successfully."
   else
     echo # Add a blank line after command output
     pwarn "Permission issues detected. Trying with elevated permissions..."
     echo # Add a blank line before command output
-    if dim_output sudo npm install --no-optional; then
+    if sudo npm install --no-optional; then
       echo # Add a blank line after command output
       pmsg "Dependencies installed successfully."
     else
@@ -301,7 +291,7 @@ if [ "$IS_WSL" -eq 1 ]; then
 else
   # Normal npm install for non-WSL environments
   echo # Add a blank line before command output
-  dim_output npm install
+  npm install
   echo # Add a blank line after command output
 fi
 
@@ -386,12 +376,12 @@ fi
 sleep 2
 if ! kill -0 $server_pid 2>/dev/null; then
   perr "Failed to start the server. Please check the logs for errors."
-  cat "$SERVER_LOG" | sed "s/^/${DIM}/" | sed "s/$/${NC}/"
+  cat "$SERVER_LOG" 
   rm -f "$SERVER_LOG"
   exit 1
 else
-  # Show the dimmed server output
-  cat "$SERVER_LOG" | sed "s/^/${DIM}/" | sed "s/$/${NC}/"
+  # Show the server output
+  cat "$SERVER_LOG"
   rm -f "$SERVER_LOG"
   pmsg "Server started successfully with PID: $server_pid"
 fi
