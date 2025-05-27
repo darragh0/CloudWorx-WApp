@@ -33,14 +33,28 @@ function Invoke-CommandWithDimOutput {
         [scriptblock]$ScriptBlock
     )
     Write-Host ""  # Add blank line before command output
+    
+    # Run the command and capture its output
     $output = & $ScriptBlock *>&1
+    
+    # Process each line of output
     foreach ($line in $output) {
+        # Clean up the output by removing control characters and strange formatting
         if ($line -is [System.Management.Automation.ErrorRecord]) {
-            Write-Host $line -ForegroundColor DarkGray
+            # For error records, convert to string first
+            $cleanLine = "$line" -replace '\e\[\d+m', '' -replace '[^\x20-\x7E]', ''
+            if ($cleanLine.Trim() -ne "") {
+                Write-Host $cleanLine -ForegroundColor DarkGray
+            }
         } else {
-            Write-Host $line -ForegroundColor DarkGray
+            # For normal output
+            $cleanLine = "$line" -replace '\e\[\d+m', '' -replace '[^\x20-\x7E]', ''
+            if ($cleanLine.Trim() -ne "") {
+                Write-Host $cleanLine -ForegroundColor DarkGray
+            }
         }
     }
+    
     Write-Host ""  # Add blank line after command output
 }
 
@@ -143,8 +157,6 @@ if (-not $recaptchaValue -or $recaptchaValue -eq "your_recaptcha_secret_key_here
 
 Write-ColorMessage "RECAPTCHA_SECRET_KEY is set."
 
-Write-ColorMessage "RECAPTCHA_SECRET_KEY is set."
-
 # 2. Certificate Setup
 Write-ColorMessage "Setting up SSL certificates..."
 
@@ -212,15 +224,47 @@ if (-not (Test-Path certs)) {
 Invoke-CommandWithDimOutput { mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost }
 
 # 3. Install dependencies and run app
-Write-ColorMessage "Installing Node.js dependencies..."
+Write-ColorMessage "Checking for Node.js..."
+
+# Function to install Node.js using Chocolatey
+function Install-NodeJS {
+    Write-ColorMessage "Installing Node.js..." "Yellow"
+    
+    # Check if Chocolatey is available
+    if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
+        Write-Error "Chocolatey is required to install Node.js automatically."
+        Write-Error "Please install Node.js manually from https://nodejs.org/"
+        Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        exit 1
+    }
+    
+    # Install Node.js using Chocolatey
+    Invoke-CommandWithDimOutput { choco install nodejs-lts -y }
+    
+    # Refresh environment variables
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+    
+    # Verify installation
+    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+        Write-Error "Failed to install Node.js. Please install it manually."
+        Write-Error "Download from: https://nodejs.org/"
+        Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        exit 1
+    }
+    
+    Write-ColorMessage "Node.js installed successfully: $(node -v)"
+    Write-ColorMessage "npm installed successfully: $(npm -v)"
+}
 
 # Check if npm is installed
 if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-    Write-Error "npm is not installed. Please install Node.js and npm."
-    Write-Error "Download from: https://nodejs.org/"
-    Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-    exit 1
+    Write-ColorMessage "Node.js is not installed. Attempting to install automatically..." "Yellow"
+    Install-NodeJS
+}
+else {
+    Write-ColorMessage "Node.js is already installed: $(node -v)"
 }
 
 Write-ColorMessage "Installing dependencies..."
@@ -249,23 +293,25 @@ Write-ColorMessage "Starting server on https://localhost:3443"
 $currentDir = Get-Location
 Write-ColorMessage "Server directory: $currentDir" "Cyan"
 
-# Capture server output to a temp file
-$tempFile = [System.IO.Path]::GetTempFileName()
-
+# Start the server in a background job
 $serverJob = Start-Job -ScriptBlock {
     Set-Location $using:PWD
-    # Redirect output to temp file
-    npm run serve *> $using:tempFile
+    npm run serve
 }
 
 # Give the server a moment to start
 Start-Sleep -Seconds 3
 
-# Show the server output with dimmed formatting
-if (Test-Path $tempFile) {
+# Receive job output and display it with proper formatting
+$output = Receive-Job -Job $serverJob -Keep
+if ($output) {
     Write-Host ""  # Add blank line before server output
-    Get-Content $tempFile | ForEach-Object {
-        Write-Host $_ -ForegroundColor DarkGray
+    foreach ($line in $output) {
+        # Clean up the output
+        $cleanLine = "$line" -replace '\e\[\d+m', '' -replace '[^\x20-\x7E]', ''
+        if ($cleanLine.Trim() -ne "") {
+            Write-Host $cleanLine -ForegroundColor DarkGray
+        }
     }
     Write-Host ""  # Add blank line after server output
 }
