@@ -17,6 +17,8 @@ HTML/JS web client for [CloudWorx](https://github.com/Nanda128/CloudWorx-Backend
     - Copy `.env.example` to `.env`
     - Update with valid RECAPTCHA key (contact [darragh0](https://github.com/darragh0))
 3. **Follow [Automated Setup](#automated-setup-recommended) or [Manual Setup](#manual-setup) steps**
+4. **Run the app using `npm run serve` (or `npm run dev` for auto-reload)**
+5. **Open [https://localhost:3443](https://localhost:3443)**
 
 > [!NOTE]
 > You may see a security warning in your browser the first time you run the app. This is expected with local certificates and can safely be ignored.
@@ -25,15 +27,7 @@ HTML/JS web client for [CloudWorx](https://github.com/Nanda128/CloudWorx-Backend
 
 ### Automated Setup (Recommended)
 
-Use [`init-scripts/init.sh`](./init-scripts/init.sh) (Linux/macOS) or [`init-scripts/init.ps1`](./init-scripts/init.ps1) (Windows) to automatically:
-
-- Configure environment
-- Install dependencies
-- Generate certificates
-- Start the server & open the app in your browser
-
-> [!Note]
-> The script will exit with an error if the RECAPTCHA_SECRET_KEY is missing or invalid.
+Use [`init-scripts/init.sh`](./init-scripts/init.sh) (Linux/macOS) or [`init-scripts/init.ps1`](./init-scripts/init.ps1) (Windows).
 
 #### Linux and macOS
 ```sh
@@ -42,18 +36,17 @@ chmod +x init-scripts/init.sh && ./init-scripts/init.sh
 
 #### Windows
 ```powershell
-.\init-scripts\init.ps1
+Start-Process wt.exe -Verb RunAs -ArgumentList "pwsh -NoExit -Command Set-Location '$PWD' && .\init-scripts\init.ps1"
 ```
 
-> [!TIP]
-> The script will automatically request administrator privileges if needed.
+> [!NOTE]
+> Administrator privileges are required for the Powershell script.
 
 ### Manual Setup
 
-If you prefer to set up the project manually, follow these steps (assuming you have [Node.js](https://nodejs.org/en) installed):
+If you prefer to set up the project manually, follow these steps:
 
-#### 1. SSL Certificate Setup
-Generate local SSL certificates using [mkcert](https://github.com/FiloSottile/mkcert):
+#### 1. Generate local SSL certificates using [mkcert](https://github.com/FiloSottile/mkcert):
 
 **Install mkcert**:
 - Windows (with Chocolatey): `choco install mkcert`
@@ -66,12 +59,10 @@ mkcert -install
 mkdir certs && mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost
 ```
 
-#### 2. Run the Application
+#### 2. Install dependencies (assuming you have [Node.js](https://nodejs.org/en) installed)
 ```sh
-npm install && npm run serve
+npm install
 ```
-
-Then open [https://localhost:3443](https://localhost:3443) in your browser.
 
 ## 🔒 Why HTTPS?
 

@@ -1,317 +1,406 @@
-# CloudWorx Setup Script for Windows
-# Run this script with PowerShell
+#Requires -Version 5.1
 
-# Function to print colored messages with only the prefix colored
-function Write-ColorMessage {
-    param (
-        [string]$Message,
-        [string]$Color = "Green"
-    )
-    Write-Host "[CloudWorx Setup]" -ForegroundColor $Color -NoNewline
-    Write-Host " $Message"
+# CloudWorx Setup Script for Windows
+
+param(
+    [switch]$Force
+)
+
+# ============================================================================
+# Error handling and execution policy
+# ============================================================================
+$ErrorActionPreference = "Stop"
+Set-StrictMode -Version Latest
+
+# Check execution policy
+if ((Get-ExecutionPolicy) -eq "Restricted") {
+    Write-Host "PowerShell execution policy is restricted. Run this command first:" -ForegroundColor Red
+    Write-Host "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser" -ForegroundColor Yellow
+    exit 1
+}
+
+# ============================================================================
+# Colors and formatting
+# ============================================================================
+$script:Colors = @{
+    Green  = [System.ConsoleColor]::Green
+    Blue   = [System.ConsoleColor]::Blue
+    Yellow = [System.ConsoleColor]::Yellow
+    Red    = [System.ConsoleColor]::Red
+    Gray   = [System.ConsoleColor]::DarkGray
+    White  = [System.ConsoleColor]::White
+}
+
+function Show-Banner {
+Write-Host @"
+
+    `e[0;1;34;94m▄▄▄▄`e[0m   `e[0;34m▄▄▄▄`e[0m                                `e[0;1;30;90m▄▄`e[0m `e[0;1;30;90m▄▄`e[0m      `e[0;1;34;94m▄▄`e[0m
+  `e[0;34m██▀▀▀▀█`e[0m  `e[0;34m▀▀██`e[0m                                `e[0;1;30;90m█`e[0;1;34;94m█`e[0m `e[0;1;34;94m██`e[0m      `e[0;1;34;94m██`e[0m
+ `e[0;34m██▀`e[0m         `e[0;37m██`e[0m       `e[0;37m▄█`e[0;1;30;90m███▄`e[0m   `e[0;1;30;90m██`e[0m    `e[0;1;30;90m██`e[0m   `e[0;1;34;94m▄███▄██`e[0m `e[0;1;34;94m▀█▄`e[0m `e[0;1;34;94m██`e[0m `e[0;34m▄█▀`e[0m  `e[0;34m▄████▄`e[0m    `e[0;37m██▄████`e[0m  `e[0;37m▀██`e[0m  `e[0;37m██`e[0;1;30;90m▀`e[0m
+ `e[0;37m██`e[0m          `e[0;37m██`e[0m      `e[0;1;30;90m██▀`e[0m  `e[0;1;30;90m▀██`e[0m  `e[0;1;30;90m█`e[0;1;34;94m█`e[0m    `e[0;1;34;94m██`e[0m  `e[0;1;34;94m██▀`e[0m  `e[0;1;34;94m▀█`e[0;34m█`e[0m  `e[0;34m██`e[0m `e[0;34m██`e[0m `e[0;34m██`e[0m  `e[0;34m██▀`e[0m  `e[0;37m▀██`e[0m   `e[0;37m██▀`e[0m        `e[0;1;30;90m████`e[0m
+ `e[0;37m██▄`e[0m         `e[0;1;30;90m██`e[0m      `e[0;1;30;90m██`e[0m    `e[0;1;34;94m██`e[0m  `e[0;1;34;94m██`e[0m    `e[0;1;34;94m██`e[0m  `e[0;34m██`e[0m    `e[0;34m██`e[0m  `e[0;34m███▀▀`e[0;37m███`e[0m  `e[0;37m██`e[0m    `e[0;37m██`e[0m   `e[0;1;30;90m██`e[0m         `e[0;1;30;90m▄██▄`e[0m
+  `e[0;1;30;90m██▄▄▄▄█`e[0m    `e[0;1;30;90m██▄`e[0;1;34;94m▄▄`e[0m   `e[0;1;34;94m▀██▄▄██▀`e[0m  `e[0;1;34;94m█`e[0;34m█▄▄▄███`e[0m  `e[0;34m▀██▄▄██`e[0;37m█`e[0m  `e[0;37m███`e[0m  `e[0;37m███`e[0m  `e[0;37m▀██`e[0;1;30;90m▄▄██▀`e[0m   `e[0;1;30;90m██`e[0m        `e[0;1;34;94m▄█▀▀█▄`e[0m
+    `e[0;1;30;90m▀▀▀▀`e[0m      `e[0;1;34;94m▀▀▀▀`e[0m     `e[0;1;34;94m▀`e[0;34m▀▀▀`e[0m     `e[0;34m▀▀▀▀`e[0m `e[0;34m▀▀`e[0m    `e[0;37m▀▀▀`e[0m `e[0;37m▀▀`e[0m  `e[0;37m▀▀▀`e[0m  `e[0;1;30;90m▀▀▀`e[0m    `e[0;1;30;90m▀▀▀▀`e[0m     `e[0;1;34;94m▀▀`e[0m       `e[0;1;34;94m▀▀▀`e[0m  `e[0;1;34;94m▀▀`e[0;34m▀`e[0m
+
+"@ -ForegroundColor White
+}
+
+function Write-Success {
+    param([string]$Message, [int]$Indent = 0)
+    $padding = " " * $Indent
+    Write-Host "${padding}✓ $Message" -ForegroundColor $Colors.Green
+}
+
+function Write-Info {
+    param([string]$Message, [int]$Indent = 0)
+    $padding = " " * $Indent
+    Write-Host "${padding}• $Message" -ForegroundColor $Colors.Blue
 }
 
 function Write-Warning {
-    param (
-        [string]$Message
-    )
-    Write-Host "[CloudWorx Setup :: warning]" -ForegroundColor Yellow -NoNewline
-    Write-Host " $Message"
+    param([string]$Message, [int]$Indent = 0)
+    $padding = " " * $Indent
+    Write-Host "${padding}! $Message" -ForegroundColor $Colors.Yellow
 }
 
 function Write-Error {
-    param (
-        [string]$Message
+    param([string]$Message, [int]$Indent = 0)
+    $padding = " " * $Indent
+    Write-Host "${padding}✗ $Message" -ForegroundColor $Colors.Red
+}
+
+function Write-Step {
+    param([string]$Message, [int]$Indent = 0)
+    $padding = " " * $Indent
+    Write-Host "${padding}→ $Message" -ForegroundColor $Colors.Blue
+}
+
+function Write-Output {
+    param([string]$Message, [int]$Indent = 0)
+    $padding = " " * ($Indent + 4)
+    if (![string]::IsNullOrWhiteSpace($Message)) {
+        Write-Host "${padding}$Message" -ForegroundColor $Colors.Gray
+    }
+}
+
+# ============================================================================
+# Utility functions
+# ============================================================================
+
+function Invoke-Command {
+    param(
+        [string]$Command,
+        [string]$Description,
+        [int]$Indent = 0,
+        [switch]$Silent,
+        [switch]$IgnoreExitCode
     )
-    Write-Host "[CloudWorx Setup :: error]" -ForegroundColor Red -NoNewline
-    Write-Host " $Message"
-}
-
-# Function to run a command and display output normally
-function Invoke-CommandWithOutput {
-    param (
-        [scriptblock]$ScriptBlock
-    )
-    Write-Host ""  # Add blank line before command output
-    & $ScriptBlock
-    Write-Host ""  # Add blank line after command output
-}
-
-# Check if running as administrator and restart with elevation if needed
-$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-
-# Get the script directory regardless of where it's called from
-$scriptPath = $MyInvocation.MyCommand.Definition
-$scriptDir = Split-Path -Parent $scriptPath
-$projectDir = Split-Path -Parent $scriptDir  # The project directory is one level up from the script directory
-
-# Check if we're in the project directory, if not, change to it
-$currentDir = Get-Location
-if ($currentDir.Path -ne $projectDir) {
-    Write-Warning "Script is not running from the project directory."
-    Write-ColorMessage "Changing directory to: $projectDir" "Green"
-    Set-Location $projectDir
-    Write-ColorMessage "Current directory is now: $(Get-Location)" "Green"
-}
-
-if (-not $isAdmin) {
-    Write-Warning "This script requires administrator privileges."
-    Write-ColorMessage "Attempting to restart with elevated privileges..." "Green"
+    
+    if ($Description) {
+        Write-Step $Description $Indent
+    }
     
     try {
-        # Start a new PowerShell process with elevated privileges
-        Start-Process PowerShell -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`"" -WorkingDirectory $projectDir
-        exit
+        if ($Silent) {
+            $output = Invoke-Expression $Command 2>&1
+            if ($LASTEXITCODE -ne 0 -and -not $IgnoreExitCode) {
+                Write-Warning "Command failed, showing output:" $Indent
+                $output | ForEach-Object { Write-Output $_.ToString() $Indent }
+                throw "Command failed with exit code $LASTEXITCODE"
+            }
+        }
+        else {
+            $output = Invoke-Expression $Command 2>&1
+            $output | ForEach-Object { 
+                $line = $_.ToString().Trim()
+                if (![string]::IsNullOrWhiteSpace($line)) {
+                    Write-Output $line $Indent
+                }
+            }
+            if ($LASTEXITCODE -ne 0 -and -not $IgnoreExitCode) {
+                throw "Command failed with exit code $LASTEXITCODE"
+            }
+        }
+        return $true
     }
     catch {
-        Write-Error "Failed to restart with elevated privileges."
-        Write-Error "Please run this script as administrator manually."
-        Write-Error "Right-click on PowerShell and select 'Run as Administrator', then navigate to the script location and run it."
-        Write-Host "`nPress any key to exit..." -ForegroundColor Green
-        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-        exit 1
+        if (-not $Silent) {
+            Write-Error "Command failed: $_" $Indent
+        }
+        return $false
     }
 }
 
-Write-ColorMessage "Starting CloudWorx setup..."
-
-# Display and verify current working directory
-$currentDir = Get-Location
-Write-ColorMessage "Working directory: $currentDir" "Green"
-
-# Verify we're in the project directory
-if (!(Test-Path ".env.example") -and !(Test-Path "package.json")) {
-    Write-Error "Could not find key project files. This doesn't appear to be the CloudWorx project directory."
-    Write-Error "Current directory: $currentDir"
-    Write-Host "`nPress any key to exit..." -ForegroundColor Green
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-    exit 1
-}
-
-# 1. Environment Setup
-Write-ColorMessage "Setting up environment..."
-
-# Function to handle reCAPTCHA key errors
-function Show-RecaptchaError {
-    param (
-        [string]$Reason
-    )
-    Write-Error $Reason
-    Write-Error "Please update the .env file with a valid RECAPTCHA_SECRET_KEY."
-    Write-Error "Contact darragh0 (https://github.com/darragh0) for the actual value."
-    Write-Host "`nPress any key to exit..." -ForegroundColor Green
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-    exit 1
-}
-
-if (-not (Test-Path .env)) {
-    if (Test-Path .env.example) {
-        Copy-Item .env.example .env
-        Write-ColorMessage "Created .env file from template."
-        Write-Warning "Remember to set a valid RECAPTCHA_SECRET_KEY in the .env file."
-    } else {
-        Write-Error ".env.example file not found!"
-        Write-Host "`nPress any key to exit..." -ForegroundColor Green
-        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+# ============================================================================
+# Setup functions
+# ============================================================================
+function Test-SystemRequirements {
+    Write-Info "Checking Windows version..."
+    $version = [System.Environment]::OSVersion.Version
+    if ($version.Major -lt 10) {
+        Write-Error "Windows 10 or later is required"
         exit 1
     }
-} else {
-    Write-ColorMessage ".env file already exists."
-}
-
-# Check for valid RECAPTCHA_SECRET_KEY in .env
-Write-ColorMessage "Checking RECAPTCHA_SECRET_KEY in .env file..."
-$envContent = Get-Content .env -ErrorAction SilentlyContinue
-$recaptchaLine = $envContent | Where-Object { $_ -match "^RECAPTCHA_SECRET_KEY=" }
-
-if (-not $recaptchaLine) {
-    Show-RecaptchaError "RECAPTCHA_SECRET_KEY is not set in .env file!"
-}
-
-$recaptchaValue = $recaptchaLine -replace "^RECAPTCHA_SECRET_KEY=", ""
-
-if (-not $recaptchaValue -or $recaptchaValue -eq "your_recaptcha_secret_key_here") {
-    Show-RecaptchaError "RECAPTCHA_SECRET_KEY in .env file still has the default placeholder value!"
-}
-
-Write-ColorMessage "RECAPTCHA_SECRET_KEY is set."
-
-# 2. Certificate Setup
-Write-ColorMessage "Setting up SSL certificates..."
-
-# Check if mkcert is installed (using Chocolatey)
-if (-not (Get-Command mkcert -ErrorAction SilentlyContinue)) {
-    Write-ColorMessage "mkcert not found. Attempting to install..."
+    Write-Success "Windows version: $($version.Major).$($version.Minor)"
     
-    # Check if Chocolatey is installed
+    # Check if running in WSL (shouldn't happen, but just in case)
+    if ($env:WSL_DISTRO_NAME) {
+        Write-Error "This is the Windows PowerShell script. Use the bash script for WSL."
+        exit 1
+    }
+}
+
+function Test-ProjectDirectory {
+    Write-Step "Validating project directory"
+    
+    $scriptDir = Split-Path -Parent $PSCommandPath
+    $projectDir = Split-Path -Parent $scriptDir
+    $currentDir = Get-Location
+    
+    if ($currentDir.Path -ne $projectDir) {
+        Write-Info "Changing to project directory: $projectDir"
+        Set-Location $projectDir
+    }
+    
+    if (-not (Test-Path ".env.example") -and -not (Test-Path "package.json")) {
+        Write-Error "Missing project files - not in CloudWorx directory?"
+        Write-Error "Current: $(Get-Location)"
+        exit 1
+    }
+    
+    Write-Success "Project directory validated"
+}
+
+function Set-Environment {
+    Write-Host "`n[Environment Setup]" -ForegroundColor Blue
+    
+    if (-not (Test-Path ".env")) {
+        if (Test-Path ".env.example") {
+            Copy-Item ".env.example" ".env"
+            Write-Success "Created ``.env`` from template" 2
+            Write-Warning "Set ``RECAPTCHA_SECRET_KEY`` in ``.env`` file" 2
+        }
+        else {
+            Write-Error "``.env.example`` not found" 2
+            exit 1
+        }
+    }
+    else {
+        Write-Success "``.env`` file exists" 2
+    }
+    
+    # Validate reCAPTCHA key
+    Write-Step "Checking ``RECAPTCHA_SECRET_KEY``" 2
+    $envContent = Get-Content ".env" -ErrorAction SilentlyContinue
+    $keyLine = $envContent | Where-Object { $_ -match "^RECAPTCHA_SECRET_KEY=" }
+    
+    if (-not $keyLine) {
+        $key = ""
+    }
+    else {
+        $key = ($keyLine -split "=", 2)[1]
+    }
+    
+    if ([string]::IsNullOrWhiteSpace($key) -or $key -eq "your_recaptcha_secret_key_here") {
+        Write-Error "Missing ``RECAPTCHA_SECRET_KEY`` in `.env` file" 2
+        Write-Error "Contact darragh0 (https://github.com/darragh0) for the key" 2
+        exit 1
+    }
+    
+    Write-Success "``RECAPTCHA_SECRET_KEY`` configured" 2
+}
+
+function Install-Chocolatey {
     if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
-        Write-Warning "Chocolatey not found. You need to install Chocolatey package manager first."
-        Write-ColorMessage "Installing Chocolatey..." "Yellow"
-        
-        if (-not $isAdmin) {
-            Write-Error "Administrator privileges required to install Chocolatey."
-            Write-Error "Please run this script as administrator or install Chocolatey manually."
-            Write-Error "See: https://chocolatey.org/install"
-            exit
-        }
-        
-        # Install Chocolatey
-        Write-ColorMessage "Installing Chocolatey..." "Yellow"
-        Set-ExecutionPolicy Bypass -Scope Process -Force
-        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-        Invoke-CommandWithOutput { 
-            Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-        }
+        Write-Step "Installing Chocolatey package manager ..." 2
+        $installScript = Invoke-WebRequest -Uri "https://chocolatey.org/install.ps1" -UseBasicParsing
+        Invoke-Expression $installScript.Content
         
         # Refresh environment variables
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        
+        if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
+            Write-Error "Chocolatey installation failed" 2
+            exit 1
+        }
+        Write-Success "Chocolatey installed" 2
+    }
+    else {
+        Write-Success "Chocolatey already installed" 2
+    }
+}
+
+function Install-Mkcert {
+    Write-Host "`n[Certificate Setup]" -ForegroundColor Blue
+    
+    if (-not (Get-Command mkcert -ErrorAction SilentlyContinue)) {
+        Write-Step "Installing mkcert ..." 2
+        
+        # Try Chocolatey first
+        if (Get-Command choco -ErrorAction SilentlyContinue) {
+            if (Invoke-Command "choco install mkcert -y" -Silent -Indent 2) {
+                # Refresh PATH
+                $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+            }
+        }
+        
+        # If Chocolatey method didn't work, try Scoop
+        if (-not (Get-Command mkcert -ErrorAction SilentlyContinue)) {
+            if (Get-Command scoop -ErrorAction SilentlyContinue) {
+                Invoke-Command "scoop install mkcert" "Installing via Scoop ..." 2 -Silent
+            }
+            else {
+                # Install Scoop first
+                Write-Step "Installing Scoop package manager ..." 2
+                Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
+                
+                # Refresh PATH
+                $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "User") + ";" + $env:Path
+                
+                if (Get-Command scoop -ErrorAction SilentlyContinue) {
+                    Invoke-Command "scoop install mkcert" "Installing mkcert via Scoop ..." 2 -Silent
+                }
+            }
+        }
+        
+        # Manual download as last resort
+        if (-not (Get-Command mkcert -ErrorAction SilentlyContinue)) {
+            Write-Step "Downloading mkcert manually" 2
+            $mkcertUrl = "https://dl.filippo.io/mkcert/latest?for=windows/amd64"
+            $mkcertPath = "$env:TEMP\mkcert.exe"
+            $targetPath = "$env:ProgramFiles\mkcert\mkcert.exe"
+            
+            Invoke-WebRequest -Uri $mkcertUrl -OutFile $mkcertPath
+            
+            # Create directory and move executable
+            $targetDir = Split-Path $targetPath
+            if (-not (Test-Path $targetDir)) {
+                New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+            }
+            Move-Item $mkcertPath $targetPath -Force
+            
+            # Add to PATH
+            $currentPath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+            if ($currentPath -notlike "*$targetDir*") {
+                [System.Environment]::SetEnvironmentVariable("Path", "$currentPath;$targetDir", "Machine")
+                $env:Path = "$env:Path;$targetDir"
+            }
+        }
+        
+        if (-not (Get-Command mkcert -ErrorAction SilentlyContinue)) {
+            Write-Error "Failed to install mkcert" 2
+            Write-Error "Please install mkcert manually: https://github.com/FiloSottile/mkcert" 2
+            exit 1
+        }
+    }
+    else {
+        Write-Success "mkcert already installed" 2
     }
     
-    # Install mkcert using Chocolatey
-    Write-ColorMessage "Installing mkcert using Chocolatey..."
-    if ($isAdmin) {
-        Invoke-CommandWithOutput { choco install mkcert -y }
-        # Refresh environment variables
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-    } else {
-    Write-Error "Administrator privileges required to install mkcert."
-    Write-Error "Please run this script as administrator or install mkcert manually."
-    Write-Host "`nPress any key to exit..." -ForegroundColor Green
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-    exit 1
+    # Install local CA
+    Invoke-Command "mkcert -install" "Installing local CA" 2
+    
+    # Generate certificates
+    if (-not (Test-Path "certs")) {
+        New-Item -ItemType Directory -Path "certs" | Out-Null
     }
+    
+    Invoke-Command "mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost" "Generating certificates" 2
 }
 
-# Check again if mkcert is installed
-if (-not (Get-Command mkcert -ErrorAction SilentlyContinue)) {
-    Write-Error "Failed to install mkcert. Please install it manually."
-    Write-Error "Use: choco install mkcert"
-    Write-Host "`nPress any key to exit..." -ForegroundColor Green
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-    exit 1
-}
-
-# Install local CA
-Write-ColorMessage "Installing local CA..."
-Invoke-CommandWithOutput { mkcert -install }
-
-# Generate certificates
-Write-ColorMessage "Generating certificates for localhost..."
-if (-not (Test-Path certs)) {
-    New-Item -ItemType Directory -Path certs | Out-Null
-}
-Invoke-CommandWithOutput { mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost }
-
-# 3. Install dependencies and run app
-Write-ColorMessage "Checking for Node.js..."
-
-# Function to install Node.js using Chocolatey
 function Install-NodeJS {
-    Write-ColorMessage "Installing Node.js..." "Yellow"
+    Write-Host "`n[Dependency Installation]" -ForegroundColor Blue
     
-    # Check if Chocolatey is available
-    if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
-        Write-Error "Chocolatey is required to install Node.js automatically."
-        Write-Error "Please install Node.js manually from https://nodejs.org/"
-        Write-Host "`nPress any key to exit..." -ForegroundColor Green
-        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-        exit 1
+    $nodeVersion = $null
+    if (Get-Command node -ErrorAction SilentlyContinue) {
+        $nodeVersion = node --version 2>$null
     }
     
-    # Install Node.js using Chocolatey
-    Invoke-CommandWithOutput { choco install nodejs-lts -y }
+    if (-not $nodeVersion) {
+        Write-Step "Installing Node.js ..." 2
+        
+        # Try Chocolatey first
+        if (Get-Command choco -ErrorAction SilentlyContinue) {
+            if (Invoke-Command "choco install nodejs -y" -Silent -Indent 2) {
+                # Refresh PATH
+                $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+            }
+        }
+        
+        # If Chocolatey didn't work, download installer
+        if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+            Write-Step "Downloading Node.js installer" 2
+            $nodeUrl = "https://nodejs.org/dist/v18.19.0/node-v18.19.0-x64.msi"
+            $installerPath = "$env:TEMP\nodejs-installer.msi"
+            
+            Invoke-WebRequest -Uri $nodeUrl -OutFile $installerPath
+            Write-Step "Running Node.js installer" 2
+            Start-Process msiexec.exe -ArgumentList "/i", $installerPath, "/quiet" -Wait
+            
+            # Refresh PATH
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+            
+            Remove-Item $installerPath -Force -ErrorAction SilentlyContinue
+        }
+        
+        if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+            Write-Error "Node.js installation failed" 2
+            exit 1
+        }
+        
+        $nodeVersion = node --version
+        Write-Success "Node.js installed: $nodeVersion" 2
+    }
+    else {
+        Write-Success "Node.js found: $nodeVersion" 2
+    }
     
-    # Refresh environment variables
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-    
-    # Verify installation
+    # Verify npm
     if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-        Write-Error "Failed to install Node.js. Please install it manually."
-        Write-Error "Download from: https://nodejs.org/"
-        Write-Host "`nPress any key to exit..." -ForegroundColor Green
-        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        Write-Error "npm not found after Node.js installation" 2
         exit 1
     }
     
-    Write-ColorMessage "Node.js installed successfully: $(node -v)"
-    Write-ColorMessage "npm installed successfully: $(npm -v)"
+    # Install dependencies
+    Write-Step "Installing dependencies" 2
+    
+    # Create node_modules directory if it doesn't exist
+    if (-not (Test-Path "node_modules")) {
+        New-Item -ItemType Directory -Path "node_modules" -Force | Out-Null
+    }
+    
+    if (-not (Invoke-Command "npm install" -Indent 2)) {
+        Write-Warning "Retrying npm install" 2
+        if (-not (Invoke-Command "npm install --no-optional" -Indent 2)) {
+            Write-Error "npm install failed" 2
+            exit 1
+        }
+    }
 }
 
-# Check if npm is installed
-if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-    Write-ColorMessage "Node.js is not installed. Attempting to install automatically..." "Yellow"
+# ============================================================================
+# Main execution
+# ============================================================================
+function Main {
+    Show-Banner
+    
+    Test-SystemRequirements
+    Test-ProjectDirectory
+    Set-Environment
+    Install-Chocolatey
+    Install-Mkcert
     Install-NodeJS
-}
-else {
-    Write-ColorMessage "Node.js is already installed: $(node -v)"
-}
-
-Write-ColorMessage "Installing dependencies..."
-Invoke-CommandWithOutput { npm install }
-
-Write-ColorMessage "Setup completed successfully!"
-
-# 4. Run the app and open browser
-Write-ColorMessage "Starting the application..."
-
-# Function to open URL in default browser
-function Open-Browser {
-    param (
-        [string]$Url
-    )
     
-    try {
-        Start-Process $Url
-    } catch {
-        Write-Warning "Couldn't open the browser automatically. Please open $Url manually."
-    }
+    Write-Host "`nRun " -NoNewline -ForegroundColor Green
+    Write-Host "npm run serve" -NoNewline -ForegroundColor White
+    Write-Host " to start the app" -ForegroundColor Green
 }
 
-# Start the server in a new window
-Write-ColorMessage "Starting server on https://localhost:3443"
-$currentDir = Get-Location
-Write-ColorMessage "Server directory: $currentDir" "Green"
-
-# Start the server in a background job
-$serverJob = Start-Job -ScriptBlock {
-    Set-Location $using:PWD
-    npm run serve
-}
-
-# Give the server a moment to start
-Start-Sleep -Seconds 3
-
-# Receive job output and display it with proper formatting
-$output = Receive-Job -Job $serverJob -Keep
-if ($output) {
-    Write-Host ""  # Add blank line before server output
-    foreach ($line in $output) {
-        Write-Host $line
-    }
-    Write-Host ""  # Add blank line after server output
-}
-
-# Open the browser
-Write-ColorMessage "Opening browser..."
-Open-Browser "https://localhost:3443"
-
-# Display info to user
-Write-ColorMessage "Server running at https://localhost:3443"
-
+# Run main function
 try {
-    # Wait for user to press Ctrl+C
-    while ($serverJob.State -eq "Running") {
-        Start-Sleep -Seconds 1
-    }
-} finally {
-    # Clean up
-    if ($serverJob.State -eq "Running") {
-        Stop-Job $serverJob
-        Remove-Job $serverJob
-        Write-ColorMessage "Server stopped."
-    }
-    
-    # Always pause before closing, in case of unexpected exit
-    Write-Host "`nServer has stopped. Press any key to exit..." -ForegroundColor Green
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    Main
+}
+catch {
+    Write-Error "Setup failed: $_"
+    exit 1
 }
