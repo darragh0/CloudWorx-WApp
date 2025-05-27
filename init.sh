@@ -9,7 +9,6 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-# Function to print colored messages
 pmsg() {
   echo -e "${GREEN}[CloudWorx Setup] $1${NC}"
 }
@@ -26,7 +25,7 @@ perr() {
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_DIR="$SCRIPT_DIR"  # The project directory is the same as the script directory
 
-# Check if we're in the project directory, if not, change to it
+# Check if we're in the project directory, if not, change dir
 CURRENT_DIR="$(pwd)"
 if [ "$CURRENT_DIR" != "$PROJECT_DIR" ]; then
   pwarn "Script is not running from the project directory."
@@ -35,12 +34,10 @@ if [ "$CURRENT_DIR" != "$PROJECT_DIR" ]; then
   pmsg "Current directory is now: $(pwd)"
 fi
 
-# Detect if running in WSL
+# Check if running in WSL
 IS_WSL=0
 if grep -qi microsoft /proc/version 2>/dev/null; then
   IS_WSL=1
-  pwarn "Detected Windows Subsystem for Linux (WSL) environment."
-  pwarn "Some special handling will be applied for compatibility."
 fi
 
 # Check if running as root (avoid this for npm installations)
@@ -51,6 +48,12 @@ if [ "$(id -u)" = "0" ]; then
   if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     exit 1
   fi
+fi
+
+# Check for npm cache directory permissions issue (common in WSL)
+if [ "$IS_WSL" -eq 1 ] && [ -d "$HOME/.npm" ] && [ ! -w "$HOME/.npm" ]; then
+  pmsg "Fixing npm cache permissions..."
+  sudo chown -R $(whoami) $HOME/.npm
 fi
 
 pmsg "Starting CloudWorx setup..."
@@ -166,48 +169,97 @@ pmsg "Installing Node.js dependencies..."
 
 # Check if npm is installed
 if ! command -v npm &> /dev/null; then
-  perr "npm is not installed. Please install Node.js and npm."
-  exit 1
+  pmsg "npm is not installed. Attempting to install Node.js..."
+  
+  if [ "$IS_WSL" -eq 1 ] || command -v apt-get &> /dev/null; then
+    # Install Node.js using apt (for Debian/Ubuntu/WSL)
+    pmsg "Installing Node.js using apt..."
+    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash - &> /dev/null
+    sudo apt-get install -y nodejs
+    
+    # Verify installation
+    if ! command -v npm &> /dev/null; then
+      perr "Failed to install Node.js. Please install it manually."
+      exit 1
+    fi
+    
+    pmsg "Node.js installed successfully: $(node -v)"
+    pmsg "npm installed successfully: $(npm -v)"
+  elif command -v yum &> /dev/null; then
+    # Install Node.js using yum (for CentOS/RHEL/Fedora)
+    pmsg "Installing Node.js using yum..."
+    curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo -E bash - &> /dev/null
+    sudo yum install -y nodejs
+    
+    # Verify installation
+    if ! command -v npm &> /dev/null; then
+      perr "Failed to install Node.js. Please install it manually."
+      exit 1
+    fi
+    
+    pmsg "Node.js installed successfully: $(node -v)"
+    pmsg "npm installed successfully: $(npm -v)"
+  elif command -v brew &> /dev/null; then
+    # Install Node.js using Homebrew (for macOS)
+    pmsg "Installing Node.js using Homebrew..."
+    brew install node
+    
+    # Verify installation
+    if ! command -v npm &> /dev/null; then
+      perr "Failed to install Node.js. Please install it manually."
+      exit 1
+    fi
+    
+    pmsg "Node.js installed successfully: $(node -v)"
+    pmsg "npm installed successfully: $(npm -v)"
+  else
+    perr "npm is not installed and could not detect a supported package manager."
+    perr "Please install Node.js manually and run this script again."
+    exit 1
+  fi
 fi
 
 # Special handling for WSL environment
 if [ "$IS_WSL" -eq 1 ]; then
-  pwarn "In WSL, using special npm installation process to avoid path issues..."
-  
-  # Check if the Windows version of npm is available and prefer it for native modules
-  if command -v cmd.exe &> /dev/null; then
-    if cmd.exe /c "where npm" &> /dev/null; then
-      pwarn "Using Windows npm for installation to avoid native module build issues."
-      pwarn "This may take a moment..."
-      
-      # Create a temporary script to run npm install with Windows npm
-      cat > ./.wsl_npm_install.bat << 'EOF'
-@echo off
-cd %~dp0
-echo Installing dependencies with Windows npm...
-npm install
-exit /b %errorlevel%
-EOF
-      
-      # Make the script executable and run it
-      chmod +x ./.wsl_npm_install.bat
-      cmd.exe /c ".\.wsl_npm_install.bat"
-      npm_result=$?
-      rm ./.wsl_npm_install.bat
-      
-      if [ $npm_result -ne 0 ]; then
-        pwarn "Windows npm installation had issues. Trying with Linux npm..."
-        npm install --no-optional
-      fi
-    else
-      # Use Linux npm but skip optional dependencies that might require native builds
-      pwarn "Windows npm not found. Using Linux npm with --no-optional flag..."
-      npm install --no-optional
+  # Verify we're using the Linux version of npm
+  NPM_PATH=$(which npm)
+  if [[ "$NPM_PATH" == *"/mnt/c/"* ]] || [[ "$NPM_PATH" == *"/c/"* ]]; then
+    pmsg "Detected Windows npm in WSL environment. Installing Linux Node.js instead..."
+    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash - &> /dev/null
+    sudo apt-get install -y nodejs
+    
+    # Verify installation
+    if ! command -v npm &> /dev/null; then
+      perr "Failed to install Node.js. Please install it manually."
+      exit 1
     fi
+    
+    pmsg "Node.js installed successfully: $(node -v)"
+    pmsg "npm installed successfully: $(npm -v)"
+    NPM_PATH=$(which npm)
+  fi
+  
+  pmsg "Using Linux npm: $NPM_PATH"
+  
+  # First try: Check if we can create the node_modules directory with the current user
+  if [ ! -d "node_modules" ]; then
+    mkdir -p node_modules 2>/dev/null || true
+  fi
+  
+  # Second try: Fix permissions if the directory exists but is not writable
+  if [ -d "node_modules" ] && [ ! -w "node_modules" ]; then
+    pmsg "Fixing permissions for node_modules directory..."
+    sudo chown -R $(whoami) node_modules
+  fi
+  
+  # Try to install without sudo first
+  pmsg "Installing dependencies..."
+  if npm install --no-optional; then
+    pmsg "Dependencies installed successfully."
   else
-    # Fallback to Linux npm with reduced features
-    pwarn "Windows cmd.exe not available. Using Linux npm with --no-optional flag..."
-    npm install --no-optional
+    pwarn "Permission issues detected. Trying with sudo..."
+    # If normal install fails, use sudo
+    sudo npm install --no-optional
   fi
 else
   # Normal npm install for non-WSL environments
@@ -223,30 +275,41 @@ pmsg "Starting the application..."
 open_browser() {
   local url=$1
   
-  # For WSL, try to use Windows browser first
+  # For WSL, try to use the wslview command which is the proper way to open URLs
   if [ "$IS_WSL" -eq 1 ]; then
-    if command -v cmd.exe &> /dev/null; then
-      pmsg "Opening browser using Windows explorer..."
-      cmd.exe /c "start $url" &> /dev/null
+    if command -v wslview &> /dev/null; then
+      pmsg "Opening browser..."
+      wslview "$url"
+      return
+    elif command -v explorer.exe &> /dev/null; then
+      pmsg "Opening browser..."
+      explorer.exe "$url"
+      return
+    else
+      pwarn "Could not find wslview or explorer.exe. Please open the URL manually: $url"
       return
     fi
   fi
   
-  # Try to detect the OS
+  # For non-WSL Linux or macOS
   case "$(uname -s)" in
     Linux*)
       # Try various Linux browser openers
       if command -v xdg-open &> /dev/null; then
+        pmsg "Opening browser..."
         xdg-open "$url" &
       elif command -v gnome-open &> /dev/null; then
+        pmsg "Opening browser..."
         gnome-open "$url" &
       elif command -v kde-open &> /dev/null; then
+        pmsg "Opening browser..."
         kde-open "$url" &
       else
         pwarn "Couldn't find a browser opener. Please open $url manually."
       fi
       ;;
     Darwin*)  # macOS
+      pmsg "Opening browser..."
       open "$url" &
       ;;
     *)
@@ -257,11 +320,36 @@ open_browser() {
 
 # Start the server in the background
 pmsg "Starting server on https://localhost:3443"
-npm run serve &
-server_pid=$!
+
+# Check if we might need sudo for port access
+if [ "$IS_WSL" -eq 1 ] || [ "$(id -u)" != "0" ]; then
+  # Try to start normally first
+  npm run serve &
+  server_pid=$!
+  
+  # Check if the server started successfully
+  sleep 2
+  if ! kill -0 $server_pid 2>/dev/null; then
+    pwarn "Failed to start server normally, trying with elevated permissions..."
+    sudo npm run serve &
+    server_pid=$!
+  fi
+else
+  npm run serve &
+  server_pid=$!
+fi
+
+# Verify server is running
+sleep 2
+if ! kill -0 $server_pid 2>/dev/null; then
+  perr "Failed to start the server. Please check the logs for errors."
+  exit 1
+else
+  pmsg "Server started successfully with PID: $server_pid"
+fi
 
 # Give the server a moment to start
-sleep 3
+sleep 2
 
 # Open the browser
 open_browser "https://localhost:3443"

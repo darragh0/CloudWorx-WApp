@@ -18,6 +18,9 @@ HTML/JS web client for [CloudWorx](https://github.com/Nanda128/CloudWorx-Backend
     - Update with valid RECAPTCHA key (contact [darragh0](https://github.com/darragh0))
 3. **Follow [Automated Setup](#automated-setup-recommended) or [Manual Setup](#manual-setup) steps**
 
+> [!NOTE]
+> You may see a security warning in your browser the first time you run the app. This is expected with local certificates and can safely be ignored.
+
 ## 🔧 Setup Options
 
 ### Automated Setup (Recommended)
@@ -47,13 +50,16 @@ chmod +x init.sh && ./init.sh
 > The script will automatically request administrator privileges if needed.
 
 #### Windows Subsystem for Linux (WSL)
-If running in WSL, use the Linux script but be aware of special handling:
+If running in WSL, first install Node.js in the Linux environment:
+```sh
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+
+Then run the initialization script:
 ```sh
 chmod +x init.sh && ./init.sh
 ```
-
-> [!NOTE]
-> The script automatically detects WSL environments and applies special handling for npm installations and browser opening to avoid common issues with Windows/Linux interoperability.
 
 ### Manual Setup
 
@@ -79,9 +85,6 @@ npm install && npm run serve
 ```
 
 Then open [https://localhost:3443](https://localhost:3443) in your browser.
-
-> [!NOTE]
-> You may see a security warning in your browser the first time. This is expected with local certificates.
 
 ## 🔒 Why HTTPS?
 
