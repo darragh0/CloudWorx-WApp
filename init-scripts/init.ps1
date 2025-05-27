@@ -5,6 +5,7 @@
 # ============================================================================
 # Error handling and execution policy
 # ============================================================================
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
@@ -96,7 +97,7 @@ function Invoke-Command {
     
     try {
         if ($Silent) {
-            $output = Invoke-Expression $Command 2>&1
+            $output = & cmd /c "$Command" 2>&1
             if ($LASTEXITCODE -ne 0 -and -not $IgnoreExitCode) {
                 Write-Warning "Command failed, showing output:" $Indent
                 $output | ForEach-Object { Write-Output $_.ToString() $Indent }
@@ -104,10 +105,10 @@ function Invoke-Command {
             }
         }
         else {
-            $output = Invoke-Expression $Command 2>&1
+            $output = & cmd /c "$Command" 2>&1
             $output | ForEach-Object { 
                 $line = $_.ToString().Trim()
-                if (![string]::IsNullOrWhiteSpace($line)) {
+                if (![string]::IsNullOrWhiteSpace($line) -and $line -notlike "*exception") {
                     Write-Output $line $Indent
                 }
             }
@@ -135,7 +136,6 @@ function Test-SystemRequirements {
         Write-Error "Windows 10 or later is required"
         exit 1
     }
-    Write-Success "Windows version: $($version.Major).$($version.Minor)"
     
     # Check if running in WSL (shouldn't happen, but just in case)
     if ($env:WSL_DISTRO_NAME) {
@@ -292,14 +292,14 @@ function Install-Mkcert {
     }
     
     # Install local CA
-    Invoke-Command "mkcert -install" "Installing local CA" 2
+    $null = Invoke-Command "mkcert -install" "Installing local CA" 2
     
     # Generate certificates
     if (-not (Test-Path "certs")) {
         New-Item -ItemType Directory -Path "certs" | Out-Null
     }
     
-    Invoke-Command "mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost" "Generating certificates" 2
+    $null = Invoke-Command "mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost" "Generating certificates" 2
 }
 
 function Install-NodeJS {
