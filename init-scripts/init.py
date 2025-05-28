@@ -182,6 +182,8 @@ def install_mkcert() -> bool:
     for pm, cmd in install_cmds.items():
         if which(pm):
             pinfo(f"Installing via {pm}", indent=4)
+            if cmd.startswith("sudo"):
+                print(" " * 6, end="")
             if run_cmd(cmd, indent=6):
                 psuccess("mkcert installed successfully", indent=4)
                 return True
@@ -208,6 +210,8 @@ def install_nodejs() -> bool:
     for pm, cmd in install_cmds.items():
         if which(pm):
             pinfo(f"Installing via {pm}", indent=4)
+            if cmd.startswith("sudo"):
+                print(" " * 6, end="")
             if run_cmd(cmd, indent=6):
                 psuccess("Node.js installed successfully", indent=4)
                 return True
