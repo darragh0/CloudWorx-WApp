@@ -16,6 +16,11 @@ let reg_users = JSON.parse(fs.readFileSync("./users.json", "utf8"));
 
 const app = express();
 const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
+const ARGON_ARGS = {
+  mem_cost: process.env.ARGON_MEM_COST,
+  time_cost: process.env.ARGON_TIME_COST,
+  threads: process.env.ARGON_THREADS,
+};
 
 const PROJ_DIR = dirname(fileURLToPath(import.meta.url));
 const PUB_DIR = path.join(PROJ_DIR, "public");
@@ -141,9 +146,9 @@ app.post("/login", async (req, res) => {
 async function hashPw(pw) {
   const hash = await argon2.hash(pw, {
     type: argon2.argon2id,
-    memoryCost: 12288,
-    timeCost: 3, // iterations
-    parallelism: 1, // threads (can bump if multi-core)
+    memoryCost: ARGON_ARGS.mem_cost,
+    timeCost: ARGON_ARGS.time_cost,
+    parallelism: ARGON_ARGS.threads,
   });
 
   return hash;

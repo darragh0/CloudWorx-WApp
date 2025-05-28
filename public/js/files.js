@@ -611,38 +611,34 @@ document.addEventListener("DOMContentLoaded", () => {
       const file = fileInput.files[0];
       const fileBytes = new Uint8Array(await file.arrayBuffer());
 
-      // Step 1: generate DEK, KEK, PEK
+      // Step 1: Generate a Data Encryption Key (DEK) for the file
       const dek = await genAESKey();
-      const kek = await genAESKey();
-      const pek = await genAESKey(); // in prod: this is pre-stored/secured, not generated client-side
 
-      // Step 2: encrypt file w/ DEK
+      // Step 2: Encrypt file with DEK
       const iv_file = genIV();
       const encryptedFile = await encryptData(dek, iv_file, fileBytes);
 
-      // Step 3: encrypt DEK w/ KEK
+      // Step 3: Get raw DEK bytes to be encrypted
       const rawDEK = await exportKeyRaw(dek);
-      const iv_dek = genIV();
-      const encryptedDEK = await encryptData(kek, iv_dek, rawDEK);
 
-      // Step 4: encrypt KEK w/ PEK
-      const rawKEK = await exportKeyRaw(kek);
-      const iv_kek = genIV();
-      const encryptedKEK = await encryptData(pek, iv_kek, rawKEK);
+      // Step 4: Encrypt DEK (This would normally use a KEK derived from user's password or a master key)
+      // For demo purposes, we're using a simulated KEK
+      const iv_dek = genIV();
+
+      // Simulate a KEK - In a real app this would be derived from the user's master key
+      // or retrieved securely from a key management system
+      const kek = await genAESKey();
+      const encrypted_dek = await encryptData(kek, iv_dek, rawDEK);
 
       // Base64 encode everything to prep for upload
       const payload = {
         file_name: file.name,
         file_type: file.type,
         file_size: file.size,
-
         iv_file: toBase64(iv_file),
         iv_dek: toBase64(iv_dek),
-        iv_kek: toBase64(iv_kek),
-
+        encrypted_dek: toBase64(encrypted_dek),
         encrypted_file: toBase64(encryptedFile),
-        encrypted_dek: toBase64(encryptedDEK),
-        encrypted_kek: toBase64(encryptedKEK),
       };
 
       console.log("Payload to upload:", payload);

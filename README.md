@@ -14,8 +14,7 @@ HTML/JS web client for [CloudWorx](https://github.com/Nanda128/CloudWorx-Backend
 
 1. **Clone the repository**
 2. **Set up environment**:
-    - Copy `.env.example` to `.env`
-    - Update with valid RECAPTCHA key (contact [darragh0](https://github.com/darragh0))
+    - Copy `.env.example` to `.env` and update with valid keys (contact [darragh0](https://github.com/darragh0))
 3. **Follow [Automated Setup](#automated-setup-recommended) or [Manual Setup](#manual-setup) steps**
 4. **Run the app using `npm run serve` (or `npm run dev` for auto-reload)**
 5. **Open [https://localhost:3443](https://localhost:3443)**
@@ -27,16 +26,10 @@ HTML/JS web client for [CloudWorx](https://github.com/Nanda128/CloudWorx-Backend
 
 ### Automated Setup (Recommended)
 
-Use [`init-scripts/init.sh`](./init-scripts/init.sh) (Linux/macOS) or [`init-scripts/init.ps1`](./init-scripts/init.ps1) (Windows).
+Use the Python setup script ([`init-scripts/init.py`](./init-scripts/init.py)) (assuming you have [Python](https://www.python.org) installed).
 
-#### Linux and macOS
 ```sh
-chmod +x init-scripts/init.sh && ./init-scripts/init.sh
-```
-
-#### Windows
-```powershell
-.\init-scripts\init.ps1
+py ./init-scripts/init.py
 ```
 
 ### Manual Setup
