@@ -326,7 +326,8 @@ def check_nodejs() -> None:
     nodejs = which("node")
     if not nodejs:
         perr("Node.js is not installed", indent=2)
-        perr("Please install it to continue (https://nodejs.org)")
+        perr("Please install it to continue (https://nodejs.org)", indent=2)
+        sys.exit(4)
 
     pinfo("Installing dependencies", indent=2)
     if not run_cmd("npm install", indent=4):
