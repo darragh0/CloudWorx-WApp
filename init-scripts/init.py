@@ -225,6 +225,7 @@ def check_pwd() -> None:
     pinfo(f"Current dir: `{cwd}`", indent=2)
 
     if Path(ROOT_DIR) != cwd:
+        pwarn("Current dir is not the root directory", indent=2)
         pinfo(f"Changing root dir: `{ROOT_DIR}`", indent=2)
         chdir(ROOT_DIR)
 
@@ -266,15 +267,15 @@ def check_env() -> None:
         pwarn("No `.env` file found.", indent=2)
 
         if not Path(".env.example").exists():
-            perr("Missing `.env.example` file. Cannot create `.env`.", indent=2)
-            sys.exit(2)
+            perr("Missing `.env.example` file. Cannot create `.env`", indent=2)
+            sys.exit(1)
 
         env_content = Path(".env.example").read_text(encoding="utf-8")
         env_file.write_text(env_content[env_content.find("\n") + 1 :], encoding="utf-8")
 
         pinfo("Created `.env` from `.env.example`", indent=2)
-        pinfo("Contact darragh0 for the actual values", indent=2)
-        return
+        perr("Missing required values in `.env` (contact darragh0)", indent=2)
+        sys.exit(1)
 
 
 def check_certs() -> None:
@@ -288,29 +289,29 @@ def check_certs() -> None:
         pinfo("Created `certs` dir", indent=2)
 
     if not which("mkcert"):
-        perr("mkcert is not installed.", indent=2)
+        perr("mkcert is not installed", indent=2)
         install = yn_prompt("Install mkcert?", indent=2)
         if not install:
-            perr("Please install mkcert to continue (https://github.com/FiloSottile/mkcert).")
-            sys.exit(3)
+            perr("Please install mkcert to continue (https://github.com/FiloSottile/mkcert)")
+            sys.exit(2)
 
         if not install_mkcert():
-            perr("Failed to install mkcert. Please install manually (https://github.com/FiloSottile/mkcert).")
-            sys.exit(3)
+            perr("Failed to install mkcert. Please install manually (https://github.com/FiloSottile/mkcert)")
+            sys.exit(2)
     else:
         psuccess("mkcert is installed", indent=2)
 
     pinfo("Installing local CA", indent=2)
     if not run_cmd("mkcert -install", indent=4):
         perr("Failed to install local CA", indent=2)
-        sys.exit(3)
+        sys.exit(2)
 
     both_files_exist = Path(certs_dir / "localhost-key.pem").exists() and Path(certs_dir / "localhost.pem").exists()
     if not both_files_exist:
         pinfo("Generating certificates", indent=2)
         if not run_cmd("mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost", indent=4):
             perr("Failed to generate certificates", indent=2)
-            sys.exit(3)
+            sys.exit(2)
 
     psuccess("Certificates are valid", indent=2)
 
@@ -322,24 +323,24 @@ def check_nodejs() -> None:
 
     if not Path("package.json").exists():
         perr("Missing required `package.json` file", indent=2)
-        sys.exit(4)
+        sys.exit(3)
 
     nodejs = which("node")
     if not nodejs:
         perr("Node.js is not installed.", indent=2)
         install = yn_prompt("Install Node.js?", indent=2)
         if not install:
-            perr("Please install Node.js to continue (https://nodejs.org).")
-            sys.exit(5)
+            perr("Please install Node.js to continue (https://nodejs.org)")
+            sys.exit(3)
 
         if not install_nodejs():
-            perr("Failed to install Node.js. Please install manually (https://nodejs.org).")
-            sys.exit(5)
+            perr("Failed to install Node.js. Please install manually (https://nodejs.org)")
+            sys.exit(3)
 
     pinfo("Installing dependencies", indent=2)
     if not run_cmd("npm install", indent=4):
         perr("Failed to install npm dependencies", indent=2)
-        sys.exit(5)
+        sys.exit(3)
 
 
 def main() -> None:
@@ -352,7 +353,7 @@ def main() -> None:
     check_nodejs()
 
     print()
-    pinfo("Run `npm run serve` to start the server.")
+    pinfo("Run `npm run serve` to start the server")
 
 
 if __name__ == "__main__":
