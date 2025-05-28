@@ -29,7 +29,7 @@ HTML/JS web client for [CloudWorx](https://github.com/Nanda128/CloudWorx-Backend
 Use the Python setup script ([`init-scripts/init.py`](./init-scripts/init.py)) (assuming you have [Python](https://www.python.org) installed).
 
 ```sh
-py ./init-scripts/init.py
+python ./init-scripts/init.py
 ```
 
 ### Manual Setup

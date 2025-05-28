@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import ctypes
 import platform
 import re
 import subprocess as sp
@@ -52,20 +53,38 @@ class Color:
         if platform.system() == "Windows":
             # Enable ANSI colors on Windows 10+
             try:
-                import ctypes
-
                 kernel32 = ctypes.windll.kernel32
                 kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
             except Exception:  # noqa: BLE001
                 Color._strip_colors()
 
 
-def yn_prompt(prompt: str, indent: int = 0) -> bool:
-    """Ask user y/n question"""
+def _print(msg: str, *, prefix: str | None = None, indent: int = 0, color: str) -> None:
+    """Print message with optional indentation and color"""
+
+    if color != Color.DIM:
+        msg = re.sub(r"`(.*?)`", rf"{Color.RST}`\1`{color}", msg)
+
+    if prefix is None:
+        prefix = ""
+    else:
+        prefix += " "
 
     padding = " " * indent
-    ans = input(f"{padding}{prompt} (y/n): ")
-    return ans.lower().strip() == "y"
+    print(f"{padding}{color}{prefix}{msg}{Color.RST}")
+
+
+def pwindows_tip() -> None:
+    _print(
+        r'Start-Process wt.exe -Verb RunAs -ArgumentList "python $PWD\init-scripts\init.py"',
+        indent=4,
+        color=Color.DIM,
+    )
+
+
+def psec(title: str) -> None:
+    """Print section header"""
+    print(f"\n{Color.BLD}[{title}]{Color.RST}")
 
 
 def pbanner() -> None:
@@ -102,33 +121,29 @@ def pbanner() -> None:
         print(line)
 
 
-def psec(title: str) -> None:
-    """Print section header"""
-    print(f"\n{Color.BLD}[{title}]{Color.RST}")
-
-
-def _print(msg: str, *, prefix: str | None = None, indent: int = 0, color: str) -> None:
-    """Print message with optional indentation and color"""
-
-    if color != Color.DIM:
-        msg = re.sub(r"`(.*?)`", rf"{Color.RST}`\1`{color}", msg)
-
-    if prefix is None:
-        prefix = ""
-    else:
-        prefix += " "
-
-    padding = " " * indent
-    print(f"{padding}{color}{prefix}{msg}{Color.RST}")
-
-
 psuccess = partial(_print, prefix="✓", color=Color.GRN)
 pwarn = partial(_print, prefix="!", color=Color.YLW)
 perr = partial(_print, prefix="✗", color=Color.RED)
 pinfo = partial(_print, prefix="→", color=Color.BLU)
 
 
-def run_cmd(cmd: str, *, indent: int = 0, output: bool = True) -> bool:
+def is_admin() -> bool:
+    """Check if the script is running with administrator privileges on Windows"""
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def yn_prompt(prompt: str, indent: int = 0) -> bool:
+    """Ask user y/n question"""
+
+    padding = " " * indent
+    ans = input(f"{padding}{prompt} (y/n): ")
+    return ans.lower().strip() == "y"
+
+
+def run_cmd(cmd: str, *, indent: int = 0, output: bool = True) -> bool:  # noqa: C901, PLR0912
     """Run a shell command with or without its output. Returns True on success, False on failure."""
 
     try:
@@ -137,7 +152,9 @@ def run_cmd(cmd: str, *, indent: int = 0, output: bool = True) -> bool:
             shell=True,
             stdout=sp.PIPE if output else None,
             stderr=sp.PIPE if output else None,
+            stdin=sys.stdin,
             text=True,
+            encoding="utf-8",
         )
 
         if output:
@@ -146,18 +163,25 @@ def run_cmd(cmd: str, *, indent: int = 0, output: bool = True) -> bool:
             for line in process.stdout:
                 if line := line.strip():
                     printed = True
-                    _print(f" | {line}", indent=indent, color=Color.DIM)
+                    if line.startswith("Progress"):
+                        _print(f" | {line}\r", indent=indent, color=Color.DIM)
+                    else:
+                        _print(f" | {line}", indent=indent, color=Color.DIM)
 
             return_code = process.wait()
 
             if not printed:
                 for line in process.stderr:
                     if line := line.strip():
-                        _print(f" | {line}", indent=indent, color=Color.DIM)
+                        if line.startswith("Progress"):
+                            _print(f" | {line}\r", indent=indent, color=Color.DIM)
+                        else:
+                            _print(f" | {line}", indent=indent, color=Color.DIM)
         else:
             return_code = process.wait()
 
     except Exception as e:  # noqa: BLE001
+        print(e.__class__.__name__, e)
         perr(f"Failed to run command `{cmd}`: {e}", indent=indent)
         return False
 
@@ -182,42 +206,12 @@ def install_mkcert() -> bool:
     for pm, cmd in install_cmds.items():
         if which(pm):
             pinfo(f"Installing via {pm}", indent=4)
-            if cmd.startswith("sudo"):
-                print(" " * 6, end="")
             if run_cmd(cmd, indent=6):
                 psuccess("mkcert installed successfully", indent=4)
                 return True
 
     perr("No supported package manager found", indent=4)
     pinfo("Please install mkcert manually (https://github.com/FiloSottile/mkcert)", indent=4)
-    return False
-
-
-def install_nodejs() -> bool:
-    """Install Node.js using common package managers"""
-
-    pinfo("Installing Node.js...", indent=2)
-
-    install_cmds = {
-        "brew": "brew install node",
-        "choco": "choco install nodejs",
-        "scoop": "scoop install nodejs",
-        "apt": "sudo apt update && sudo apt install -y nodejs npm",
-        "dnf": "sudo dnf install -y nodejs npm",
-        "pacman": "sudo pacman -S nodejs npm",
-    }
-
-    for pm, cmd in install_cmds.items():
-        if which(pm):
-            pinfo(f"Installing via {pm}", indent=4)
-            if cmd.startswith("sudo"):
-                print(" " * 6, end="")
-            if run_cmd(cmd, indent=6):
-                psuccess("Node.js installed successfully", indent=4)
-                return True
-
-    perr("No supported package manager found", indent=4)
-    pinfo("Please install Node.js manually (https://nodejs.org)", indent=4)
     return False
 
 
@@ -263,7 +257,7 @@ def check_env() -> None:
                     continue
 
         if err:
-            sys.exit(1)
+            sys.exit(2)
 
         psuccess("`.env` is valid", indent=2)
 
@@ -272,14 +266,14 @@ def check_env() -> None:
 
         if not Path(".env.example").exists():
             perr("Missing `.env.example` file. Cannot create `.env`", indent=2)
-            sys.exit(1)
+            sys.exit(2)
 
         env_content = Path(".env.example").read_text(encoding="utf-8")
         env_file.write_text(env_content[env_content.find("\n") + 1 :], encoding="utf-8")
 
         pinfo("Created `.env` from `.env.example`", indent=2)
         perr("Missing required values in `.env` (contact darragh0)", indent=2)
-        sys.exit(1)
+        sys.exit(2)
 
 
 def check_certs() -> None:
@@ -297,25 +291,25 @@ def check_certs() -> None:
         install = yn_prompt("Install mkcert?", indent=2)
         if not install:
             perr("Please install mkcert to continue (https://github.com/FiloSottile/mkcert)")
-            sys.exit(2)
+            sys.exit(3)
 
         if not install_mkcert():
             perr("Failed to install mkcert. Please install manually (https://github.com/FiloSottile/mkcert)")
-            sys.exit(2)
+            sys.exit(3)
     else:
         psuccess("mkcert is installed", indent=2)
 
     pinfo("Installing local CA", indent=2)
     if not run_cmd("mkcert -install", indent=4):
         perr("Failed to install local CA", indent=2)
-        sys.exit(2)
+        sys.exit(3)
 
     both_files_exist = Path(certs_dir / "localhost-key.pem").exists() and Path(certs_dir / "localhost.pem").exists()
     if not both_files_exist:
         pinfo("Generating certificates", indent=2)
         if not run_cmd("mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost", indent=4):
             perr("Failed to generate certificates", indent=2)
-            sys.exit(2)
+            sys.exit(3)
 
     psuccess("Certificates are valid", indent=2)
 
@@ -327,28 +321,32 @@ def check_nodejs() -> None:
 
     if not Path("package.json").exists():
         perr("Missing required `package.json` file", indent=2)
-        sys.exit(3)
+        sys.exit(4)
 
     nodejs = which("node")
     if not nodejs:
-        perr("Node.js is not installed.", indent=2)
-        install = yn_prompt("Install Node.js?", indent=2)
-        if not install:
-            perr("Please install Node.js to continue (https://nodejs.org)")
-            sys.exit(3)
-
-        if not install_nodejs():
-            perr("Failed to install Node.js. Please install manually (https://nodejs.org)")
-            sys.exit(3)
+        perr("Node.js is not installed", indent=2)
+        perr("Please install it to continue (https://nodejs.org)")
 
     pinfo("Installing dependencies", indent=2)
     if not run_cmd("npm install", indent=4):
         perr("Failed to install npm dependencies", indent=2)
-        sys.exit(3)
+        sys.exit(4)
 
 
 def main() -> None:
     Color.check_platform()
+
+    win = False
+    if platform.system() == "Windows" and not is_admin():
+        perr("This script requires administrator privileges on Windows")
+        perr("Please run again as admin")
+        print()
+        pinfo("Tip: Run the following if wt.exe is available: ")
+        pwindows_tip()
+        sys.exit(1)
+    elif platform.system() == "Windows":
+        win = True
 
     pbanner()
     check_pwd()
@@ -358,6 +356,9 @@ def main() -> None:
 
     print()
     pinfo("Run `npm run serve` to start the server")
+    if win:
+        print()
+        sp.run("pause", shell=True, check=False)  # noqa: S602, S607
 
 
 if __name__ == "__main__":
