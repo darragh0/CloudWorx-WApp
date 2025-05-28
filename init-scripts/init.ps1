@@ -30,7 +30,8 @@ $script:Colors = @{
 
 function Show-Banner {
     $banner = "CloudWorx"
-    Write-Host $banner -ForegroundColor Blue
+    Write-Host ""
+    Write-Host $banner -ForegroundColor Cyan 
 }
 
 function Write-Success {
@@ -159,7 +160,8 @@ function Test-ProjectDirectory {
 }
 
 function Set-Environment {
-    Write-Host "`n[Environment Setup]" -ForegroundColor Blue
+    Write-Host ""
+    Write-Host "[Environment Setup]" -ForegroundColor Blue
     
     if (-not (Test-Path ".env")) {
         if (Test-Path ".env.example") {
@@ -218,7 +220,8 @@ function Install-Chocolatey {
 }
 
 function Install-Mkcert {
-    Write-Host "`n[Certificate Setup]" -ForegroundColor Blue
+    Write-Host ""
+    Write-Host "[Certificate Setup]" -ForegroundColor Blue
     
     if (-not (Get-Command mkcert -ErrorAction SilentlyContinue)) {
         Write-Step "Installing mkcert ..." 2
@@ -296,7 +299,8 @@ function Install-Mkcert {
 }
 
 function Install-NodeJS {
-    Write-Host "`n[Dependency Installation]" -ForegroundColor Blue
+    Write-Host ""
+    Write-Host "[Dependency Installation]" -ForegroundColor Blue
     
     $nodeVersion = $null
     if (Get-Command node -ErrorAction SilentlyContinue) {
@@ -386,7 +390,8 @@ function Main {
     Install-Mkcert
     Install-NodeJS
     
-    Write-Host "`nRun " -NoNewline -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Run " -NoNewline -ForegroundColor Green
     Write-Host "npm run serve" -NoNewline -ForegroundColor White
     Write-Host " to start the app" -ForegroundColor Green
 }

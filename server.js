@@ -141,7 +141,7 @@ app.post("/login", async (req, res) => {
 async function hashPw(pw) {
   const hash = await argon2.hash(pw, {
     type: argon2.argon2id,
-    memoryCost: 2 ** 16, // 64MB — tweak as needed
+    memoryCost: 12288,
     timeCost: 3, // iterations
     parallelism: 1, // threads (can bump if multi-core)
   });
