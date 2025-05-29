@@ -168,20 +168,17 @@ app.post("/login", async (req, res) => {
 
   try {
     // Fetch hash from db
-    let storedHash = null;
     let userData = null;
 
     if (username in all_users) {
       userData = all_users[username];
-      // Check if the user data is in the old format (just a string hash) or new format (object with email and hash)
-      storedHash = typeof userData === "string" ? userData : userData.hash;
     }
 
-    if (!storedHash) {
+    if (!userData) {
       return res.status(401).send("Invalid username or password");
     }
 
-    const isValid = await verifyPw(pw, storedHash);
+    const isValid = await verifyPw(pw, userData.hash);
     if (isValid) {
       console.log(`\x1b[1;92mUser signed in:\x1b[0m ${username}`);
 

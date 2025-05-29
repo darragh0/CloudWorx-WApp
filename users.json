@@ -1,8 +1,8 @@
 {
   "admin": {
     "email": "admin@cloudworx.com",
-    "hash": "$argon2id$v=19$m=12288,t=3,p=1$BeTT4ZTR5joA70L3ZyNGDA$RmwGYCyZHJGlply2eJpn+EtCAvdK5AvQyzp4lvjsun8",
-    "kek": "6mZbj3IdnJXdyAuGguxrnyblKnHVA+UJCS6JMtfjU7TAfP2SfB6do8hDjcUkDapp",
-    "iv_kek": "5mleTFM1AadlXEaA"
+    "hash": "$argon2id$v=19$m=12288,t=3,p=1$nkdnwo+C/jfAY793MaI6yQ$I0APlp98//UkDNfNNfC+9rbEta61Haqss9vw1JjN9DM",
+    "kek": "Sfe2WtVg9XmfNGHXvuQb8jkw35M8HvHn9vNkmXtS/8H80zU9kIsm+NHYZbj6ldgw",
+    "iv_kek": "P1PG9QHqGxi79SJV"
   }
 }
