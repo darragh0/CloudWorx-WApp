@@ -181,7 +181,6 @@ def run_cmd(cmd: str, *, indent: int = 0, output: bool = True) -> bool:  # noqa:
                         indent=indent,
                         color=Color.DIM,
                         end="\r" if starts_w_progress else "\n",
-                        flush=True,
                     )
 
             return_code = process.wait()
@@ -199,7 +198,6 @@ def run_cmd(cmd: str, *, indent: int = 0, output: bool = True) -> bool:  # noqa:
                             indent=indent,
                             color=Color.DIM,
                             end="\r" if starts_w_progress else "\n",
-                            flush=True,
                         )
         else:
             return_code = process.wait()
