@@ -59,7 +59,14 @@ class Color:
                 Color._strip_colors()
 
 
-def _print(msg: str, *, prefix: str | None = None, indent: int = 0, color: str) -> None:
+def _print(
+    msg: str,
+    *,
+    prefix: str | None = None,
+    indent: int = 0,
+    color: str,
+    end: str = "\n",
+) -> None:
     """Print message with optional indentation and color"""
 
     if color != Color.DIM:
@@ -71,7 +78,7 @@ def _print(msg: str, *, prefix: str | None = None, indent: int = 0, color: str) 
         prefix += " "
 
     padding = " " * indent
-    print(f"{padding}{color}{prefix}{msg}{Color.RST}")
+    print(f"{padding}{color}{prefix}{msg}{Color.RST}", end=end, flush=True)
 
 
 def pwindows_tip() -> None:
@@ -118,7 +125,7 @@ def pbanner() -> None:
 
     for line in banner.splitlines():
         sleep(0.025)
-        print(line)
+        print(line, flush=True)
 
 
 psuccess = partial(_print, prefix="✓", color=Color.GRN)
@@ -159,14 +166,23 @@ def run_cmd(cmd: str, *, indent: int = 0, output: bool = True) -> bool:  # noqa:
 
         if output:
             printed = False
+            starts_w_progress = False
 
             for line in process.stdout:
                 if line := line.strip():
                     printed = True
                     if line.startswith("Progress"):
-                        _print(f" | {line}\r", indent=indent, color=Color.DIM)
-                    else:
-                        _print(f" | {line}", indent=indent, color=Color.DIM)
+                        starts_w_progress = True
+                    elif starts_w_progress:
+                        starts_w_progress = False
+                        print()
+                    _print(
+                        f" | {line}",
+                        indent=indent,
+                        color=Color.DIM,
+                        end="\r" if starts_w_progress else "\n",
+                        flush=True,
+                    )
 
             return_code = process.wait()
 
@@ -174,9 +190,17 @@ def run_cmd(cmd: str, *, indent: int = 0, output: bool = True) -> bool:  # noqa:
                 for line in process.stderr:
                     if line := line.strip():
                         if line.startswith("Progress"):
-                            _print(f" | {line}\r", indent=indent, color=Color.DIM)
-                        else:
-                            _print(f" | {line}", indent=indent, color=Color.DIM)
+                            starts_w_progress = True
+                        elif starts_w_progress:
+                            starts_w_progress = False
+                            print()
+                        _print(
+                            f" | {line}",
+                            indent=indent,
+                            color=Color.DIM,
+                            end="\r" if starts_w_progress else "\n",
+                            flush=True,
+                        )
         else:
             return_code = process.wait()
 
@@ -196,7 +220,7 @@ def install_mkcert() -> bool:
 
     install_cmds = {
         "brew": "brew install mkcert",
-        "choco": "choco install mkcert",
+        "choco": "choco install mkcert -y",
         "scoop": "scoop install mkcert",
         "apt": "sudo apt update && sudo apt install -y mkcert",
         "dnf": "sudo dnf install -y mkcert",
@@ -343,7 +367,7 @@ def main() -> None:
         perr("This script requires administrator privileges on Windows")
         perr("Please run again as admin")
         print()
-        pinfo("Tip: Run the following if wt.exe is available: ")
+        pinfo("Tip: Run the following in Powershell if wt.exe is available: ")
         pwindows_tip()
         sys.exit(1)
     elif platform.system() == "Windows":
