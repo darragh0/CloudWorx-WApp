@@ -3,7 +3,14 @@
  * @author darragh0
  */
 
-import { fromId, queryAll, onClick, onKeydown, query } from "./util.js";
+import {
+  fromId,
+  queryAll,
+  onClick,
+  onKeydown,
+  query,
+  regPwToggle,
+} from "./util.js";
 import {
   genIV,
   toBase64,
@@ -11,6 +18,10 @@ import {
   encryptData,
   exportKeyRaw,
 } from "./encrypt.js";
+
+/********************************************************
+ / HTML Templates
+/********************************************************/
 
 // HTML templates for file list and actions
 const HTML_TEMPLATES = {
@@ -101,6 +112,10 @@ const HTML_TEMPLATES = {
   `,
 };
 
+/********************************************************
+ / File Class Definition
+/********************************************************/
+
 class File {
   /**
    * File object constructor.
@@ -153,6 +168,10 @@ class File {
   }
 }
 
+/********************************************************
+ / Mock Data
+/********************************************************/
+
 // Mock data for demonstration
 const ALL_FILES = [
   new File(
@@ -185,17 +204,23 @@ const ALL_FILES = [
   ),
 ];
 
+/********************************************************
+ / Main Application Logic
+/********************************************************/
+
 document.addEventListener("DOMContentLoaded", () => {
   const filterButtons = queryAll(".filter-btn");
   const filesList = fromId("files-list");
   const uploadBtn = fromId("upload-file-btn");
   const uploadModal = fromId("upload-modal");
   const shareModal = fromId("share-modal");
+  const pekDownloadModal = fromId("pek-download-modal");
   const closeButtons = queryAll(".modal__close");
   const signOutBtn = fromId("sign-out-btn");
 
   let curFilter = "all";
   let curFileIndex = null;
+  let fileToDownload = null;
 
   // Add filter functionality
   filterButtons.forEach((btn) => {
@@ -211,6 +236,10 @@ document.addEventListener("DOMContentLoaded", () => {
       displayFiles();
     });
   });
+
+  /********************************************************
+   / File Display & UI Functions
+  /********************************************************/
 
   /**
    * Display files based on current filter.
@@ -332,6 +361,10 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  /********************************************************
+   / Confirmation Dialog Functions
+  /********************************************************/
+
   /**
    * Create custom confirmation dialog element.
    */
@@ -394,16 +427,27 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // File operations
+  /********************************************************
+   / File Operations
+  /********************************************************/
+
   function downloadFile(fileIndex) {
     const file = ALL_FILES[fileIndex];
-    notify(`Downloading "${file.name}"...`, "info");
+    fileToDownload = file;
 
-    // TODO: File download
-    // For now, simulate download completion after a delay
-    setTimeout(() => {
-      notify(`"${file.name}" downloaded successfully.`, "success");
-    }, 1500);
+    // Show PEK modal to get password for decryption
+    pekDownloadModal.classList.add("modal--active");
+
+    // Set up password toggles when the modal is opened
+    setupPasswordToggles();
+
+    // Clear any previous errors
+    const pekDownloadError = fromId("pek-download-password-error");
+    pekDownloadError.textContent = "";
+    pekDownloadError.classList.remove("form__error--visible");
+
+    // Focus on the password field
+    fromId("pek-download-password").focus();
   }
 
   function openShareModal(fileIndex) {
@@ -518,6 +562,10 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
+  /********************************************************
+   / Notification System
+  /********************************************************/
+
   /**
    * Create & show notification to the user.
    *
@@ -552,6 +600,10 @@ document.addEventListener("DOMContentLoaded", () => {
       setTimeout(() => notification.remove(), 300);
     }, 3000);
   }
+
+  /********************************************************
+   / Form Handling
+  /********************************************************/
 
   // Share form submission
   const shareForm = fromId("share-form");
@@ -589,8 +641,52 @@ document.addEventListener("DOMContentLoaded", () => {
     notify(`"${file.name}" has been shared with ${username}.`, "success");
   });
 
+  // Handle PEK download form submission
+  const pekDownloadForm = fromId("pek-download-form");
+  if (pekDownloadForm) {
+    pekDownloadForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const pekPassword = fromId("pek-download-password").value;
+      const pekDownloadError = fromId("pek-download-password-error");
+
+      // Validate PEK
+      if (!pekPassword) {
+        pekDownloadError.textContent =
+          "Please enter your Password Encryption Key";
+        pekDownloadError.classList.add("form__error--visible");
+        return;
+      }
+
+      // TODO: Use the PEK to decrypt the file's DEK
+
+      // Close the modal
+      pekDownloadModal.classList.remove("modal--active");
+
+      // Reset the form
+      this.reset();
+
+      if (fileToDownload) {
+        notify(`Downloading "${fileToDownload.name}"...`, "info");
+
+        // Simulate download with decryption
+        setTimeout(() => {
+          notify(
+            `"${fileToDownload.name}" downloaded and decrypted successfully.`,
+            "success"
+          );
+          fileToDownload = null;
+        }, 1500);
+      }
+    });
+  }
+
   // Upload button
-  onClick(uploadBtn, () => uploadModal.classList.add("modal--active"));
+  onClick(uploadBtn, () => {
+    uploadModal.classList.add("modal--active");
+    // Set up password toggles when the modal is opened
+    setupPasswordToggles();
+  });
 
   // Upload form
   const uploadForm = fromId("upload-form");
@@ -601,10 +697,27 @@ document.addEventListener("DOMContentLoaded", () => {
       const fileInput = fromId("file-upload");
       const selectedFileDisplay = fromId("selected-file");
       const fileUploadError = fromId("file-upload-error");
+      const pekInput = fromId("upload-pek");
+      const pekError = fromId("upload-pek-error");
 
+      // Clear previous errors
+      fileUploadError.textContent = "";
+      fileUploadError.classList.remove("form__error--visible");
+      pekError.textContent = "";
+      pekError.classList.remove("form__error--visible");
+
+      // Validate file selection
       if (!fileInput.files || fileInput.files.length === 0) {
         fileUploadError.textContent = "Please select file(s) to upload";
         fileUploadError.classList.add("form__error--visible");
+        return;
+      }
+
+      // Validate PEK
+      const pekPassword = pekInput.value;
+      if (!pekPassword) {
+        pekError.textContent = "Please enter your Password Encryption Key";
+        pekError.classList.add("form__error--visible");
         return;
       }
 
@@ -621,12 +734,12 @@ document.addEventListener("DOMContentLoaded", () => {
       // Step 3: Get raw DEK bytes to be encrypted
       const rawDEK = await exportKeyRaw(dek);
 
-      // Step 4: Encrypt DEK (This would normally use a KEK derived from user's password or a master key)
-      // For demo purposes, we're using a simulated KEK
+      // Step 4: Encrypt DEK with KEK derived from user's PEK
       const iv_dek = genIV();
 
-      // Simulate a KEK - In a real app this would be derived from the user's master key
-      // or retrieved securely from a key management system
+      // In a real app, we would derive the KEK from the PEK
+      // For this demo, we're simulating it
+      // TODO: Replace with actual KEK derivation from PEK
       const kek = await genAESKey();
       const encrypted_dek = await encryptData(kek, iv_dek, rawDEK);
 
@@ -639,6 +752,8 @@ document.addEventListener("DOMContentLoaded", () => {
         iv_dek: toBase64(iv_dek),
         encrypted_dek: toBase64(encrypted_dek),
         encrypted_file: toBase64(encryptedFile),
+        // Include a reference to the PEK (not the actual PEK) for the server
+        pek_used: true,
       };
 
       console.log("Payload to upload:", payload);
@@ -659,9 +774,16 @@ document.addEventListener("DOMContentLoaded", () => {
       displayFiles();
 
       // Show notification
-      notify(`"${newFile.name}" has been uploaded successfully.`, "success");
+      notify(
+        `"${newFile.name}" has been encrypted and uploaded successfully.`,
+        "success"
+      );
     });
   }
+
+  /********************************************************
+   / File Upload & Drag-and-Drop
+  /********************************************************/
 
   // Setup drag and drop functionality
   const setupFileDragAndDrop = () => {
@@ -748,8 +870,21 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 
-  // Initialize file drag and drop
+  // Setup file drag and drop
   setupFileDragAndDrop();
+
+  /********************************************************
+   / Utilities & Event Handlers
+  /********************************************************/
+
+  // Function to initialize password toggles
+  const setupPasswordToggles = () => {
+    const pwToggles = document.querySelectorAll(".form__password-toggle");
+    pwToggles.forEach((toggle) => regPwToggle(toggle));
+  };
+
+  // Initial setup of password toggles
+  setupPasswordToggles();
 
   // Close modal buttons
   closeButtons.forEach((btn) => {

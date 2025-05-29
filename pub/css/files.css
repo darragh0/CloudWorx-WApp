@@ -263,6 +263,19 @@ body.dark-mode .hero-section {
 .form__error--visible {
   display: block;
 }
+.form__info {
+  background-color: #f8f9fa;
+  border-left: 3px solid #1a66ff;
+  padding: 12px;
+  border-radius: 0.25em;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin-top: 5px;
+}
+.form__info p {
+  margin: 0;
+  color: #505050;
+}
 .form__captcha {
   font-family: "Inter", sans-serif;
   display: flex;

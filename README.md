@@ -16,7 +16,7 @@ HTML/JS web client for [CloudWorx](https://github.com/Nanda128/CloudWorx-Backend
 2. **Set up environment**:
     - Copy [`.env.example`](./.env.example) to `.env` and update with valid keys (contact [darragh0](https://github.com/darragh0))
 3. **Follow [Automated Setup](#automated-setup-recommended) or [Manual Setup](#manual-setup) steps**
-4. **Run the app using `npm run serve` (or `npm run dev` for auto-reload)**
+4. **Run the app using `npm start`/`npm run serve` (or `npm run dev` for auto-reload)**
 5. **Open [https://localhost:3443](https://localhost:3443)**
 
 > [!NOTE]

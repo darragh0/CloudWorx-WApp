@@ -263,6 +263,19 @@ body.dark-mode .hero-section {
 .form__error--visible {
   display: block;
 }
+.form__info {
+  background-color: #f8f9fa;
+  border-left: 3px solid #1a66ff;
+  padding: 12px;
+  border-radius: 0.25em;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin-top: 5px;
+}
+.form__info p {
+  margin: 0;
+  color: #505050;
+}
 .form__captcha {
   font-family: "Inter", sans-serif;
   display: flex;
@@ -395,4 +408,46 @@ body.dark-mode .form__submit:hover {
 .g-recaptcha {
   margin: auto;
   margin-top: 1em;
-}/*# sourceMappingURL=common.css.map */
+}
+
+.our-story {
+  display: flex;
+  max-width: 83%;
+  margin: 0 auto;
+  gap: 4em;
+  align-items: flex-start;
+}
+.our-story__content {
+  flex: 1;
+}
+.our-story__content h2 {
+  font-size: 3rem;
+  color: #2c2c2c;
+  font-weight: 600;
+  margin-bottom: 30px;
+}
+.our-story__content p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  color: #434343;
+}
+.our-story__image {
+  margin-top: 5em;
+  flex: 1;
+  border-radius: 1em;
+}
+.our-story__image img {
+  border: 3px solid #549bff;
+  width: 100%;
+  border-radius: 8px;
+}
+
+/* Dark mode styles */
+body.dark-mode .our-story__content p,
+body.dark-mode .our-story__content h2 {
+  color: #fff;
+}
+body.dark-mode .our-story__image img {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}/*# sourceMappingURL=about.css.map */

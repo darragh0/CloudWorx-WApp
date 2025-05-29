@@ -2,12 +2,13 @@
   "name": "cloudworx-wapp",
   "version": "1.0.0",
   "description": "HTML/JS web app for CloudWorx project.",
-  "main": "server.js",
+  "main": "priv/server.js",
   "type": "module",
   "scripts": {
+    "start": "npm run serve",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "serve": "node server.js",
-    "dev": "nodemon server.js"
+    "serve": "node priv/server.js",
+    "dev": "nodemon priv/server.js"
   },
   "repository": {
     "type": "git",

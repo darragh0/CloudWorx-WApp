@@ -132,6 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Modal functionality
   const signupModal = fromId("signup-modal");
   const signinModal = fromId("signin-modal");
+  const pekModal = fromId("pek-modal");
   const navGetStarted = fromId("nav-get-started");
   const heroGetStarted = fromId("hero-get-started");
   const signInLink = fromId("sign-in-link");
@@ -143,6 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const closeAllModals = () => {
     signupModal.classList.remove("modal--active");
     signinModal.classList.remove("modal--active");
+    pekModal.classList.remove("modal--active");
   };
 
   const regModal = (el, modal) => {
@@ -297,6 +299,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // Form handling
   const signupForm = fromId("signup-form");
   const signinForm = fromId("signin-form");
+  const pekForm = fromId("pek-form");
+
+  // Store signup data to use after PEK is entered
+  let signupData = null;
 
   // Handle sign-up form submission
   if (signupForm) {
@@ -348,8 +354,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const form = e.target;
       const formData = new FormData(form);
-      const data = Object.fromEntries(formData.entries());
-      const captchaResponse = data["g-recaptcha-response"];
+      signupData = Object.fromEntries(formData.entries());
+      const captchaResponse = signupData["g-recaptcha-response"];
 
       if (!captchaResponse) {
         isValid = showErr(
@@ -360,22 +366,72 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      // Store signup data and show PEK modal
+      closeModal(signupModal);
+      openModal(pekModal);
+    });
+  }
+
+  // Handle PEK form submission
+  if (pekForm) {
+    pekForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearErrs(pekForm);
+
+      const pekPassword = fromId("pek-password").value;
+      const pekConfirmPassword = fromId("pek-confirm-password").value;
+
+      let isValid = true;
+
+      // PEK password validation
+      const passwordResult = valPw(pekPassword);
+      if (!passwordResult.valid) {
+        isValid = showErr("pek-password-error", passwordResult.message);
+      }
+
+      // Confirm PEK validation
+      if (!pekConfirmPassword) {
+        isValid = showErr(
+          "pek-confirm-password-error",
+          "Please confirm your password"
+        );
+      } else if (pekPassword !== pekConfirmPassword) {
+        isValid = showErr(
+          "pek-confirm-password-error",
+          "Passwords do not match"
+        );
+      }
+
+      if (!isValid || !signupData) {
+        return;
+      }
+
+      // Add PEK to signup data
+      signupData["signup-pek-password"] = pekPassword;
+
+      // Send complete signup data to backend
       const res = await fetch("/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(signupData),
       });
 
       if (!res.ok) {
         const errorMsg = await res.text();
         // Check if it's a reCAPTCHA error
         if (errorMsg.includes("reCAPTCHA")) {
+          // Go back to signup modal to show the error
+          closeModal(pekModal);
+          openModal(signupModal);
           showErr("recaptcha-error", errorMsg);
           // Reset reCAPTCHA
           if (window.grecaptcha) {
             grecaptcha.reset();
           }
         } else {
+          // Go back to signup modal to show the error
+          closeModal(pekModal);
+          openModal(signupModal);
           showErr("signup-username-error", errorMsg);
         }
         return;
@@ -384,7 +440,10 @@ document.addEventListener("DOMContentLoaded", () => {
       // For demo purposes, set the user as authenticated
       localStorage.setItem("auth", "true");
       updateNavigation(true);
-      showSuccess(fromId("sign-up-submit"), signupForm, signupModal);
+      showSuccess(fromId("pek-submit"), pekForm, pekModal);
+
+      // Clear stored signup data after successful registration
+      signupData = null;
     });
   }
 

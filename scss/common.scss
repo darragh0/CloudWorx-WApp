@@ -332,6 +332,21 @@ body.dark-mode {
     }
   }
 
+  &__info {
+    background-color: #f8f9fa;
+    border-left: 4px solid $blue;
+    padding: 12px;
+    border-radius: 0.25em;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-top: 8px;
+
+    p {
+      margin: 0;
+      color: #505050;
+    }
+  }
+
   &__captcha {
     font-family: "Inter", sans-serif;
     display: flex;
@@ -434,6 +449,7 @@ body.dark-mode {
     }
 
     &__password-toggle {
+      margin-top: 3px;
       color: $dtxt;
     }
 

@@ -1,5 +1,10 @@
-// Utility functions for AES-GCM encryption using Web Crypto API
-const genIV = () => crypto.getRandomValues(new Uint8Array(12));
+/**
+ * Generate a random initialization vector
+ * @returns {Buffer} A 12-byte initialization vector
+ */
+function genIV() {
+  return crypto.randomBytes(12);
+}
 
 /**
  * Convert an ArrayBuffer or TypedArray to base64 string.

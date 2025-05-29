@@ -179,6 +179,65 @@
       </div>
     </div>
 
+    <!-- PEK Modal -->
+    <div class="modal" id="pek-modal">
+      <div class="modal__content">
+        <div class="modal__header">
+          <h2>Create Password Encryption Key</h2>
+          <button class="modal__close"><i class="fas fa-times"></i></button>
+        </div>
+        <form class="modal__form" id="pek-form">
+          <div class="form__group">
+            <label for="pek-password" class="form__label"
+              >Password Encryption Key (PEK)</label
+            >
+            <input
+              type="password"
+              id="pek-password"
+              name="pek-password"
+              class="form__input"
+              required
+              autocomplete="new-password"
+            />
+            <i
+              class="fas fa-eye form__password-toggle"
+              data-target="pek-password"
+            ></i>
+            <div class="form__error" id="pek-password-error"></div>
+          </div>
+          <div class="form__group">
+            <label for="pek-confirm-password" class="form__label"
+              >Confirm PEK</label
+            >
+            <input
+              type="password"
+              id="pek-confirm-password"
+              name="pek-confirm-password"
+              class="form__input"
+              required
+              autocomplete="new-password"
+            />
+            <i
+              class="fas fa-eye form__password-toggle"
+              data-target="pek-confirm-password"
+            ></i>
+            <div class="form__error" id="pek-confirm-password-error"></div>
+          </div>
+          <div class="form__info">
+            <p>
+              Your Password Encryption Key (PEK) encrypts your Key Encryption
+              Key (KEK), which secures your Data Encryption Keys (DEKs) for
+              uploaded files. Don't forget your password — it can't be
+              recovered.
+            </p>
+          </div>
+          <button type="submit" id="pek-submit" class="form__submit">
+            Create Encryption Key
+          </button>
+        </form>
+      </div>
+    </div>
+
     <script type="module" src="js/main.js"></script>
   </body>
 </html>
