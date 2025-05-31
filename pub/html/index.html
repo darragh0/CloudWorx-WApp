@@ -179,60 +179,55 @@
       </div>
     </div>
 
-    <!-- PEK Modal -->
-    <div class="modal" id="pek-modal">
+    <div class="modal" id="file-password-modal">
       <div class="modal__content">
         <div class="modal__header">
-          <h2>Create Password Encryption Key</h2>
+          <h2>Create File Password</h2>
           <button class="modal__close"><i class="fas fa-times"></i></button>
         </div>
-        <form class="modal__form" id="pek-form">
+        <form class="modal__form" id="file-password-form">
           <div class="form__group">
-            <label for="pek-password" class="form__label"
-              >Password Encryption Key (PEK)</label
-            >
+            <label for="file-password" class="form__label">File Password</label>
             <input
               type="password"
-              id="pek-password"
-              name="pek-password"
+              id="file-password"
+              name="file-password"
               class="form__input"
               required
               autocomplete="new-password"
             />
             <i
               class="fas fa-eye form__password-toggle"
-              data-target="pek-password"
+              data-target="file-password"
             ></i>
-            <div class="form__error" id="pek-password-error"></div>
+            <div class="form__error" id="file-password-error"></div>
           </div>
           <div class="form__group">
-            <label for="pek-confirm-password" class="form__label"
-              >Confirm PEK</label
+            <label for="file-confirm-password" class="form__label"
+              >Confirm Password</label
             >
             <input
               type="password"
-              id="pek-confirm-password"
-              name="pek-confirm-password"
+              id="file-confirm-password"
+              name="file-confirm-password"
               class="form__input"
               required
               autocomplete="new-password"
             />
             <i
               class="fas fa-eye form__password-toggle"
-              data-target="pek-confirm-password"
+              data-target="file-confirm-password"
             ></i>
-            <div class="form__error" id="pek-confirm-password-error"></div>
+            <div class="form__error" id="file-confirm-password-error"></div>
           </div>
           <div class="form__info">
             <p>
-              Your Password Encryption Key (PEK) encrypts your Key Encryption
-              Key (KEK), which secures your Data Encryption Keys (DEKs) for
-              uploaded files. Don't forget your password — it can't be
-              recovered.
+              Your file password is used to encrypt and decrypt your files.
+              Don't forget your password — it can't be recovered.
             </p>
           </div>
-          <button type="submit" id="pek-submit" class="form__submit">
-            Create Encryption Key
+          <button type="submit" id="file-password-submit" class="form__submit">
+            Create Password
           </button>
         </form>
       </div>

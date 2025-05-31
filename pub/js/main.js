@@ -132,7 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Modal functionality
   const signupModal = fromId("signup-modal");
   const signinModal = fromId("signin-modal");
-  const pekModal = fromId("pek-modal");
+  const filepwModal = fromId("file-password-modal");
   const navGetStarted = fromId("nav-get-started");
   const heroGetStarted = fromId("hero-get-started");
   const signInLink = fromId("sign-in-link");
@@ -144,7 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const closeAllModals = () => {
     signupModal.classList.remove("modal--active");
     signinModal.classList.remove("modal--active");
-    pekModal.classList.remove("modal--active");
+    filepwModal.classList.remove("modal--active");
   };
 
   const regModal = (el, modal) => {
@@ -299,9 +299,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // Form handling
   const signupForm = fromId("signup-form");
   const signinForm = fromId("signin-form");
-  const pekForm = fromId("pek-form");
+  const filepwForm = fromId("file-password-form");
 
-  // Store signup data to use after PEK is entered
+  // Store signup data to use after file pw is entered
   let signupData = null;
 
   // Handle sign-up form submission
@@ -368,36 +368,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Store signup data and show PEK modal
       closeModal(signupModal);
-      openModal(pekModal);
+      openModal(filepwModal);
     });
   }
 
-  // Handle PEK form submission
-  if (pekForm) {
-    pekForm.addEventListener("submit", async (e) => {
+  if (filepwForm) {
+    filepwForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      clearErrs(pekForm);
+      clearErrs(filepwForm);
 
-      const pekPassword = fromId("pek-password").value;
-      const pekConfirmPassword = fromId("pek-confirm-password").value;
+      const filepw = fromId("file-password").value;
+      const fileConfirmPw = fromId("file-confirm-password").value;
 
       let isValid = true;
 
-      // PEK password validation
-      const passwordResult = valPw(pekPassword);
-      if (!passwordResult.valid) {
-        isValid = showErr("pek-password-error", passwordResult.message);
+      // File password validation
+      const pwResult = valPw(filepw);
+      if (!pwResult.valid) {
+        isValid = showErr("file-password-error", pwResult.message);
       }
 
-      // Confirm PEK validation
-      if (!pekConfirmPassword) {
+      // Confirm file pw validation
+      if (!fileConfirmPw) {
         isValid = showErr(
-          "pek-confirm-password-error",
+          "file-confirm-password-error",
           "Please confirm your password"
         );
-      } else if (pekPassword !== pekConfirmPassword) {
+      } else if (filepw !== fileConfirmPw) {
         isValid = showErr(
-          "pek-confirm-password-error",
+          "file-confirm-password-error",
           "Passwords do not match"
         );
       }
@@ -406,8 +405,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // Add PEK to signup data
-      signupData["signup-pek-password"] = pekPassword;
+      signupData["signup-file-password"] = filepw;
 
       // Send complete signup data to backend
       const res = await fetch("/register", {
@@ -421,7 +419,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Check if it's a reCAPTCHA error
         if (errorMsg.includes("reCAPTCHA")) {
           // Go back to signup modal to show the error
-          closeModal(pekModal);
+          closeModal(filepwModal);
           openModal(signupModal);
           showErr("recaptcha-error", errorMsg);
           // Reset reCAPTCHA
@@ -430,7 +428,7 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         } else {
           // Go back to signup modal to show the error
-          closeModal(pekModal);
+          closeModal(filepwModal);
           openModal(signupModal);
           showErr("signup-username-error", errorMsg);
         }
@@ -440,7 +438,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // For demo purposes, set the user as authenticated
       localStorage.setItem("auth", "true");
       updateNavigation(true);
-      showSuccess(fromId("pek-submit"), pekForm, pekModal);
+      showSuccess(fromId("file-password-submit"), filepwForm, filepwModal);
 
       // Clear stored signup data after successful registration
       signupData = null;

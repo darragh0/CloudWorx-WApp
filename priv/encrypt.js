@@ -1,17 +1,24 @@
-// Server-side encryption utilities
+/**
+ * @file encrypt.js - Server-side crypto utilities.
+ * @author darragh0
+ */
+
 import crypto from "crypto";
+import { argon2d } from "argon2";
 
 /**
- * Generate a random initialization vector
- * @returns {Buffer} A 12-byte initialization vector
+ * Generate random IV.
+ *
+ * @returns {Buffer} 12-byte IV
  */
 function genIV() {
   return crypto.randomBytes(12);
 }
 
 /**
- * Convert a Buffer to base64 string
- * @param {Buffer} buf - Buffer to convert
+ * Convert buffer to base64 string.
+ *
+ * @param {Buffer} buf Buffer to convert
  * @returns {string} Base64 encoded string
  */
 function toBase64(buf) {
@@ -20,7 +27,8 @@ function toBase64(buf) {
 
 /**
  * Convert a base64 string to Buffer
- * @param {string} base64 - Base64 string to convert
+ *
+ * @param {string} base64 Base64 string to convert
  * @returns {Buffer} Resulting buffer
  */
 function fromBase64(base64) {
@@ -28,10 +36,11 @@ function fromBase64(base64) {
 }
 
 /**
- * Encrypt data using AES-GCM
- * @param {Buffer} key - Key for encryption (must be 32 bytes for AES-256)
- * @param {Buffer} iv - Initialization vector (12 bytes)
- * @param {Buffer|string} data - Data to encrypt
+ * Encrypt data with AES-GCM.
+ *
+ * @param {Buffer} key Key for encryption (32 bytes for AES-256)
+ * @param {Buffer} iv 12 byte IV
+ * @param {Buffer|string} data Data to encrypt
  * @returns {Buffer} Encrypted data
  */
 function encryptData(key, iv, data) {
@@ -40,20 +49,22 @@ function encryptData(key, iv, data) {
 
   const encrypted = Buffer.concat([cipher.update(dataBuffer), cipher.final()]);
 
-  // Get authentication tag and combine with encrypted data
+  // Get auth tag & combine with encrypted data
   const authTag = cipher.getAuthTag();
   return Buffer.concat([encrypted, authTag]);
 }
 
 /**
- * Decrypt data using AES-GCM
- * @param {Buffer} key - Key for decryption (must be 32 bytes for AES-256)
- * @param {Buffer} iv - Initialization vector (12 bytes)
- * @param {Buffer} data - Data to decrypt (includes authentication tag)
+ *
+ * Decrypt data with AES-GCM.
+ *
+ * @param {Buffer} key Key for decryption (32 bytes for AES-256)
+ * @param {Buffer} iv - 12-byte IV
+ * @param {Buffer} data - Data to decrypt (includes auth tag)
  * @returns {Buffer} Decrypted data
  */
 function decryptData(key, iv, data) {
-  // Extract the auth tag (last 16 bytes)
+  // Extract auth tag (last 16 bytes)
   const authTag = data.slice(data.length - 16);
   const encryptedData = data.slice(0, data.length - 16);
 
@@ -64,14 +75,14 @@ function decryptData(key, iv, data) {
 }
 
 /**
- * Generate a KEK (Key Encryption Key) from a PEK (Password Encryption Key)
- * Uses Argon2id to hash the PEK and then uses that hash as the key for AES encryption
+ * Generate KEK from PEK.
+ * Uses Argon2id to hash PEK & uses that hash as the key for AES encryption.
  *
- * @param {string|Buffer} pek - Password Encryption Key
- * @param {object} argonOptions - Options for Argon2id hashing
+ * @param {string|Buffer} pek PEK to derive KEK from
+ * @param {object} argonOptions Options for Argon2id hashing
  * @returns {object} Object containing the KEK and IV used
  */
-async function generateKEK(pek, argon2, argonOptions) {
+async function genKEK(pek, argonOptions) {
   // Convert PEK to buffer if it's a string
   const pekBuffer = typeof pek === "string" ? Buffer.from(pek) : pek;
 
@@ -103,4 +114,32 @@ async function generateKEK(pek, argon2, argonOptions) {
   };
 }
 
-export { genIV, toBase64, fromBase64, encryptData, decryptData, generateKEK };
+/**
+ * Hash a password using Argon2id.
+ *
+ * @param {string|Buffer} pw Password to hash
+ * @param {int} memCost Memory cost
+ * @param {int} timeCost Time cost
+ * @param {int} threads Number of threads
+ * @returns {Promise<string>} Hashed password
+ */
+async function hashPw(pw, memCost, timeCost, threads) {
+  const hash = await argon2.hash(pw, {
+    type: argon2.argon2id,
+    memoryCost: memCost,
+    timeCost: timeCost,
+    parallelism: threads,
+  });
+
+  return hash;
+}
+
+export {
+  genIV,
+  toBase64,
+  fromBase64,
+  encryptData,
+  decryptData,
+  genKEK,
+  hashPw,
+};

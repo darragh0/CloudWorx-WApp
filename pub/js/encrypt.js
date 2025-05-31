@@ -1,12 +1,4 @@
 /**
- * Generate a random initialization vector
- * @returns {Buffer} A 12-byte initialization vector
- */
-function genIV() {
-  return crypto.randomBytes(12);
-}
-
-/**
  * Convert an ArrayBuffer or TypedArray to base64 string.
  * Handles large arrays by processing them in chunks.
  *
@@ -28,45 +20,42 @@ const toBase64 = (buf) => {
 };
 
 /**
- * Generate new AES-GCM key.
+ * Send file to server for encryption.
+ * This delegates the encryption process to the server side.
  *
- * @returns {Promise<CryptoKey>} Promise that resolves to a generated AES-GCM key
+ * @param {File} file File to encrypt
+ * @param {string} filepw User's file password
+ * @returns {Promise<Object>} Promise that resolves to the encryption payload from server
  */
-async function genAESKey() {
-  return await crypto.subtle.generateKey(
-    { name: "AES-GCM", length: 256 },
-    true,
-    ["encrypt", "decrypt"]
-  );
+async function encryptFile(file, filepw) {
+  // Convert file to base64
+  const fileBytes = new Uint8Array(await file.arrayBuffer());
+  const fileContent = toBase64(fileBytes);
+
+  // Prepare payload for server
+  const payload = {
+    fileName: file.name,
+    fileType: file.type,
+    fileSize: file.size,
+    fileContent: fileContent,
+    filePw: filepw,
+  };
+
+  // Send to server for encryption
+  const response = await fetch("/encrypt-file", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Error encrypting file");
+  }
+
+  return await response.json();
 }
 
-/**
- * Encrypt bytes using AES-GCM.
- *
- * @param {CryptoKey} key Key for encryption
- * @param {Uint8Array} iv Initialization vector
- * @param {Uint8Array} data Data to encrypt
- *
- * @returns {Promise<Uint8Array>} Promise that resolves to encrypted data as Uint8Array
- */
-async function encryptData(key, iv, data) {
-  const encrypted = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    key,
-    data
-  );
-  return new Uint8Array(encrypted);
-}
-
-/**
- * Export CryptoKey as raw bytes.
- *
- * @param {CryptoKey} key Key to export
- * @returns {Promise<Uint8Array>} Promise that resolves to raw bytes of the key
- */
-async function exportKeyRaw(key) {
-  const raw = await crypto.subtle.exportKey("raw", key);
-  return new Uint8Array(raw);
-}
-
-export { genIV, toBase64, genAESKey, encryptData, exportKeyRaw };
+export { toBase64, encryptFile };

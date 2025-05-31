@@ -1,5 +1,5 @@
 /**
- * @file val.js – Validation utilities for username & password.
+ * @file val.js – Client-side validation utils for username & password.
  * @author darragh0
  */
 

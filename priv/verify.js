@@ -1,12 +1,29 @@
+/**
+ * @file verify.js - Verfication utilities for passwords & reCAPTCHA.
+ * @author darragh0
+ */
+
 import argon2 from "argon2";
 import fetch from "node-fetch";
-import { generateKEK } from "./encrypt.js";
 
+/**
+ * Verify a password against a hash.
+ *
+ * @param {string} pw Password to verify
+ * @param {string} hash Argon2id hash
+ * @returns
+ */
 async function verifyPw(pw, hash) {
   return await argon2.verify(hash, pw);
 }
 
-// Verify reCAPTCHA response
+/**
+ * Verify user's reCAPTCHA response.
+ *
+ * @param {string} response reCAPTCHA response token (from client)
+ * @param {string} secretKey reCAPTCHA secret key (from `.env`)
+ * @returns
+ */
 async function verifyRecaptcha(response, secretKey) {
   if (!response) {
     return {
@@ -50,26 +67,4 @@ async function verifyRecaptcha(response, secretKey) {
     };
   }
 }
-
-async function hashPw(pw, memCost, timeCost, threads) {
-  const hash = await argon2.hash(pw, {
-    type: argon2.argon2id,
-    memoryCost: memCost,
-    timeCost: timeCost,
-    parallelism: threads,
-  });
-
-  return hash;
-}
-
-/**
- * Generate KEK (Key Encryption Key) from PEK (Password Encryption Key)
- * @param {string} pek - Password Encryption Key
- * @param {object} argonOptions - Options for Argon2id hashing
- * @returns {object} Object containing the KEK and IV used
- */
-async function generateUserKEK(pek, argonOptions) {
-  return await generateKEK(pek, argon2, argonOptions);
-}
-
-export { verifyPw, verifyRecaptcha, hashPw, generateUserKEK };
+export { verifyPw, verifyRecaptcha };

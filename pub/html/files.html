@@ -161,26 +161,29 @@
             <div class="form__error" id="file-upload-error"></div>
           </div>
           <div class="form__group">
-            <label for="upload-pek" class="form__label"
-              >Password Encryption Key (PEK)</label
+            <label for="upload-file-password" class="form__label"
+              >File Password</label
             >
             <input
               type="password"
-              id="upload-pek"
-              name="upload-pek"
+              id="upload-file-password"
+              name="upload-file-password"
               class="form__input"
               required
               autocomplete="current-password"
-              placeholder="Enter your PEK to encrypt this file"
+              placeholder="Enter your file password to encrypt this file"
             />
             <i
               class="fas fa-eye form__password-toggle"
-              data-target="upload-pek"
+              data-target="upload-file-password"
             ></i>
             <div class="form__info">
-              <p>Your PEK is required to encrypt the file securely.</p>
+              <p>
+                Your file password is required to encrypt & upload files
+                securely.
+              </p>
             </div>
-            <div class="form__error" id="upload-pek-error"></div>
+            <div class="form__error" id="upload-file-password-error"></div>
           </div>
           <button type="submit" id="upload-submit" class="form__submit">
             Upload
@@ -189,39 +192,37 @@
       </div>
     </div>
 
-    <!-- PEK Download Modal -->
-    <div class="modal" id="pek-download-modal">
+    <div class="modal" id="download-modal">
       <div class="modal__content">
         <div class="modal__header">
-          <h2>Enter Password Encryption Key</h2>
+          <h2>Enter File Password</h2>
           <button class="modal__close"><i class="fas fa-times"></i></button>
         </div>
-        <form class="modal__form" id="pek-download-form">
+        <form class="modal__form" id="download-form">
           <div class="form__info">
             <p>
-              Please enter your Password Encryption Key (PEK) to decrypt this
-              file.
+              Please enter your file password to decrypt & download this file.
             </p>
           </div>
           <div class="form__group">
-            <label for="pek-download-password" class="form__label"
-              >Password Encryption Key</label
+            <label for="download-password" class="form__label"
+              >File Password</label
             >
             <input
               type="password"
-              id="pek-download-password"
-              name="pek-download-password"
+              id="download-password"
+              name="download-password"
               class="form__input"
               required
               autocomplete="current-password"
             />
             <i
               class="fas fa-eye form__password-toggle"
-              data-target="pek-download-password"
+              data-target="download-password"
             ></i>
-            <div class="form__error" id="pek-download-password-error"></div>
+            <div class="form__error" id="download-modal-password-error"></div>
           </div>
-          <button type="submit" id="pek-download-submit" class="form__submit">
+          <button type="submit" id="download-submit" class="form__submit">
             Download File
           </button>
         </form>

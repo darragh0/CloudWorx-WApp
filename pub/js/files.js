@@ -1,23 +1,10 @@
 /**
- * @file files.js – File management functionality for web app.
+ * @file files.js - File management functionality for web app.
  * @author darragh0
  */
 
-import {
-  fromId,
-  queryAll,
-  onClick,
-  onKeydown,
-  query,
-  regPwToggle,
-} from "./util.js";
-import {
-  genIV,
-  toBase64,
-  genAESKey,
-  encryptData,
-  exportKeyRaw,
-} from "./encrypt.js";
+import { fromId, queryAll, onClick, regPwToggle } from "./util.js";
+import { toBase64, encryptFile } from "./encrypt.js";
 
 /********************************************************
  / HTML Templates
@@ -116,7 +103,7 @@ const HTML_TEMPLATES = {
  / File Class Definition
 /********************************************************/
 
-class File {
+class FileObj {
   /**
    * File object constructor.
    *
@@ -174,28 +161,28 @@ class File {
 
 // Mock data for demonstration
 const ALL_FILES = [
-  new File(
+  new FileObj(
     "project_docs.pdf",
     "me",
     2.5 * 1024 * 1024, // 2.4 MB
     new Date("2025-05-15T12:11:45"),
     false
   ),
-  new File(
+  new FileObj(
     "financial_report.xlsx",
     "me",
     1.9 * 1024 * 1024, // 1.8 MB
     new Date("2025-05-10T08:45:12"),
     true
   ),
-  new File(
+  new FileObj(
     "presentation.pptx",
     "john_doe",
     4.4 * 1024 * 1024, // 4.2 MB
     new Date("2025-05-18T14:03:23"),
     true
   ),
-  new File(
+  new FileObj(
     "meeting_notes.docx",
     "me",
     635 * 1024, // 620 KB
@@ -214,7 +201,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const uploadBtn = fromId("upload-file-btn");
   const uploadModal = fromId("upload-modal");
   const shareModal = fromId("share-modal");
-  const pekDownloadModal = fromId("pek-download-modal");
+  const dlModal = fromId("download-modal");
   const closeButtons = queryAll(".modal__close");
   const signOutBtn = fromId("sign-out-btn");
 
@@ -284,7 +271,7 @@ document.addEventListener("DOMContentLoaded", () => {
   /**
    * Generate HTML for a file row.
    *
-   * @param {File} file The file object
+   * @param {FileObj} file The file object
    * @param {number} idx The index in the ALL_FILES array
    * @returns {string} HTML for the file row
    */
@@ -319,7 +306,7 @@ document.addEventListener("DOMContentLoaded", () => {
   /**
    * Generate HTML for users with access list.
    *
-   * @param {File} file The file object
+   * @param {FileObj} file The file object
    * @returns {string} HTML for the users list
    */
   function genUsersListHTML(file) {
@@ -435,19 +422,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const file = ALL_FILES[fileIndex];
     fileToDownload = file;
 
-    // Show PEK modal to get password for decryption
-    pekDownloadModal.classList.add("modal--active");
+    dlModal.classList.add("modal--active");
 
     // Set up password toggles when the modal is opened
     setupPasswordToggles();
 
     // Clear any previous errors
-    const pekDownloadError = fromId("pek-download-password-error");
-    pekDownloadError.textContent = "";
-    pekDownloadError.classList.remove("form__error--visible");
+    const pwDlError = fromId("download-modal-password-error");
+    pwDlError.textContent = "";
+    pwDlError.classList.remove("form__error--visible");
 
     // Focus on the password field
-    fromId("pek-download-password").focus();
+    fromId("download-password").focus();
   }
 
   function openShareModal(fileIndex) {
@@ -641,27 +627,24 @@ document.addEventListener("DOMContentLoaded", () => {
     notify(`"${file.name}" has been shared with ${username}.`, "success");
   });
 
-  // Handle PEK download form submission
-  const pekDownloadForm = fromId("pek-download-form");
-  if (pekDownloadForm) {
-    pekDownloadForm.addEventListener("submit", function (e) {
+  const dlForm = fromId("download-form");
+  if (dlForm) {
+    dlForm.addEventListener("submit", function (e) {
       e.preventDefault();
 
-      const pekPassword = fromId("pek-download-password").value;
-      const pekDownloadError = fromId("pek-download-password-error");
+      const filepw = fromId("download-password").value;
+      const dlError = fromId("download-modal-password-error");
 
-      // Validate PEK
-      if (!pekPassword) {
-        pekDownloadError.textContent =
-          "Please enter your Password Encryption Key";
-        pekDownloadError.classList.add("form__error--visible");
+      if (!filepw) {
+        dlError.textContent = "Please enter your Password Encryption Key";
+        dlError.classList.add("form__error--visible");
         return;
       }
 
       // TODO: Use the PEK to decrypt the file's DEK
 
       // Close the modal
-      pekDownloadModal.classList.remove("modal--active");
+      dlModal.classList.remove("modal--active");
 
       // Reset the form
       this.reset();
@@ -697,14 +680,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const fileInput = fromId("file-upload");
       const selectedFileDisplay = fromId("selected-file");
       const fileUploadError = fromId("file-upload-error");
-      const pekInput = fromId("upload-pek");
-      const pekError = fromId("upload-pek-error");
+      const filepwInput = fromId("upload-file-password");
+      const filepwError = fromId("upload-file-password-error");
 
       // Clear previous errors
       fileUploadError.textContent = "";
       fileUploadError.classList.remove("form__error--visible");
-      pekError.textContent = "";
-      pekError.classList.remove("form__error--visible");
+      filepwError.textContent = "";
+      filepwError.classList.remove("form__error--visible");
 
       // Validate file selection
       if (!fileInput.files || fileInput.files.length === 0) {
@@ -713,71 +696,62 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // Validate PEK
-      const pekPassword = pekInput.value;
-      if (!pekPassword) {
-        pekError.textContent = "Please enter your Password Encryption Key";
-        pekError.classList.add("form__error--visible");
+      const filepw = filepwInput.value;
+      if (!filepw) {
+        filepwError.textContent = "Please enter your file password";
+        filepwError.classList.add("form__error--visible");
         return;
       }
 
       const file = fileInput.files[0];
-      const fileBytes = new Uint8Array(await file.arrayBuffer());
+      const uploadStatus = fromId("upload-status");
 
-      // Step 1: Generate a Data Encryption Key (DEK) for the file
-      const dek = await genAESKey();
+      // Show uploading indicator
+      uploadStatus.classList.add("uploading");
+      uploadStatus.style.display = "flex";
 
-      // Step 2: Encrypt file with DEK
-      const iv_file = genIV();
-      const encryptedFile = await encryptData(dek, iv_file, fileBytes);
+      try {
+        // Delegate encryption to server
+        const payload = await encryptFile(file, filepw);
 
-      // Step 3: Get raw DEK bytes to be encrypted
-      const rawDEK = await exportKeyRaw(dek);
+        console.log("Payload from server encryption:", payload);
+        // TODO: send to backend via fetch
 
-      // Step 4: Encrypt DEK with KEK derived from user's PEK
-      const iv_dek = genIV();
+        // Create a new File instance
+        const newFile = new FileObj(
+          file.name,
+          "me",
+          file.size,
+          new Date(),
+          false
+        );
 
-      // In a real app, we would derive the KEK from the PEK
-      // For this demo, we're simulating it
-      // TODO: Replace with actual KEK derivation from PEK
-      const kek = await genAESKey();
-      const encrypted_dek = await encryptData(kek, iv_dek, rawDEK);
+        ALL_FILES.unshift(newFile);
 
-      // Base64 encode everything to prep for upload
-      const payload = {
-        file_name: file.name,
-        file_type: file.type,
-        file_size: file.size,
-        iv_file: toBase64(iv_file),
-        iv_dek: toBase64(iv_dek),
-        encrypted_dek: toBase64(encrypted_dek),
-        encrypted_file: toBase64(encryptedFile),
-        // Include a reference to the PEK (not the actual PEK) for the server
-        pek_used: true,
-      };
+        // Clear the form and selected file display
+        this.reset();
+        selectedFileDisplay.textContent = "";
+        selectedFileDisplay.classList.remove("has-file");
 
-      console.log("Payload to upload:", payload);
-      // TODO: send to backend via fetch
+        // Close the modal and refresh the display
+        uploadModal.classList.remove("modal--active");
+        displayFiles();
 
-      // Create a new File instance
-      const newFile = new File(file.name, "me", file.size, new Date(), false);
-
-      ALL_FILES.unshift(newFile);
-
-      // Clear the form and selected file display
-      this.reset();
-      selectedFileDisplay.textContent = "";
-      selectedFileDisplay.classList.remove("has-file");
-
-      // Close the modal and refresh the display
-      uploadModal.classList.remove("modal--active");
-      displayFiles();
-
-      // Show notification
-      notify(
-        `"${newFile.name}" has been encrypted and uploaded successfully.`,
-        "success"
-      );
+        // Show notification
+        notify(
+          `"${newFile.name}" has been encrypted and uploaded successfully.`,
+          "success"
+        );
+      } catch (error) {
+        console.error("Error during file encryption:", error);
+        filepwError.textContent =
+          "Failed to encrypt file: " + (error.message || "Unknown error");
+        filepwError.classList.add("form__error--visible");
+      } finally {
+        // Hide uploading indicator
+        uploadStatus.classList.remove("uploading");
+        uploadStatus.style.display = "none";
+      }
     });
   }
 

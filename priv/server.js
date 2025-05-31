@@ -1,15 +1,21 @@
+/**
+ * @file server.js - Express server entry point.
+ * @author darragh0
+ */
+
 import express from "express";
 import fs from "fs";
 import https from "https";
 import dotenv from "dotenv";
-import { verifyPw, verifyRecaptcha, hashPw, generateUserKEK } from "./auth.js";
+import { verifyPw, verifyRecaptcha } from "./verify.js";
+import { genKEK, hashPw } from "./encrypt.js";
 
 import { join, resolve } from "path";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
 
 /********************************************************
- / Initialize Express app
+/ Initialize Express app & Middleware
 /********************************************************/
 
 const app = express();
@@ -18,27 +24,42 @@ const PROJ_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PUB_DIR = join(PROJ_DIR, "pub");
 const HTML_DIR = join(PUB_DIR, "html");
 
-// Middleware
-app.use(express.static(PUB_DIR)); // Static files dir (for css, js, & images)
-app.use(express.urlencoded({ extended: true })); // Parse incoming form data
-app.use(express.json()); // Parse incoming JSON requests
+// Static files dir (for css, js, & images)
+app.use(express.static(PUB_DIR));
+// Parse incoming form data
+app.use(express.urlencoded({ extended: true }));
+// Parse incoming JSON requests
+app.use(express.json());
 
 let all_users = JSON.parse(fs.readFileSync("./users.json", "utf8"));
 
 /********************************************************
- / Load environment variables from `.env`
+/ Load environment variables from `.env`
 /********************************************************/
 
 dotenv.config({ path: resolve(PROJ_DIR, ".env") });
+
+for (const envVar of [
+  "RECAPTCHA_SECRET_KEY",
+  "ARGON_MEM_COST",
+  "ARGON_TIME_COST",
+  "ARGON_THREADS",
+]) {
+  if (!process.env[envVar]) {
+    console.error(
+      `\x1b[1;91mMissing environment variable: \x1b[1;93m${envVar}\x1b[0m`
+    );
+    process.exit(1);
+  }
+}
+
 const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
-const ARGON_ARGS = {
-  memCost: process.env.ARGON_MEM_COST,
-  timeCost: process.env.ARGON_TIME_COST,
-  threads: process.env.ARGON_THREADS,
-};
+const ARGON_MEM_COST = process.env.ARGON_MEM_COST;
+const ARGON_TIME_COST = process.env.ARGON_TIME_COST;
+const ARGON_THREADS = process.env.ARGON_THREADS;
 
 /********************************************************
- / Page routing
+/ Page routing
 /********************************************************/
 
 // Serve `.html` files without `.html` in URL
@@ -64,34 +85,38 @@ app.get("/", (_, res) => {
 // TODO: Send requests via sockets or API
 
 /********************************************************
- / Registration (Signup) API endpoint
+/ Registration (Signup) API endpoint
 /********************************************************/
 
 app.post("/register", async (req, res) => {
-  const username = req.body["signup-username"];
+  const uname = req.body["signup-username"];
   const email = req.body["signup-email"];
   const pw = req.body["signup-password"];
-  const pek = req.body["signup-pek-password"];
-  const recaptchaResponse = req.body["g-recaptcha-response"];
+  const filepw = req.body["signup-file-password"];
+  const capRes = req.body["g-recaptcha-response"];
 
-  if (!username || !email || !pw || !pek) {
+  if (!uname || !email || !pw || !filepw || !capRes) {
     return res
       .status(400)
-      .send("Username, email, password, and PEK are required");
+      .send(
+        "All fields are required: username, email, password, file password, & reCAPTCHA response"
+      );
   }
 
   // Basic email validation on the server side
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   if (!emailRegex.test(email)) {
-    return res.status(400).send("Please enter a valid email address");
+    return res.status(400).send("Invalid email address");
   }
 
   // Check if username already exists
-  if (username in all_users) {
+  // TODO: Actual check
+  if (uname in all_users) {
     return res.status(400).send("Username already exists");
   }
 
   // Check if email already exists
+  // TODO: Actual check
   const emailExists = Object.values(all_users).some(
     (user) => user.email && user.email.toLowerCase() === email.toLowerCase()
   );
@@ -101,20 +126,17 @@ app.post("/register", async (req, res) => {
   }
 
   // Verify reCAPTCHA
-  const recaptchaResult = await verifyRecaptcha(
-    recaptchaResponse,
-    RECAPTCHA_SECRET_KEY
-  );
+  const recaptchaResult = await verifyRecaptcha(capRes, RECAPTCHA_SECRET_KEY);
   if (!recaptchaResult.success) {
     return res.status(400).send(recaptchaResult.error);
   }
 
   try {
-    const pek_hash = await hashPw(
-      pek,
-      ARGON_ARGS.memCost,
-      ARGON_ARGS.timeCost,
-      ARGON_ARGS.threads
+    const pek = await hashPw(
+      filepw,
+      ARGON_MEM_COST,
+      ARGON_TIME_COST,
+      ARGON_THREADS
     );
 
     const pw_hash = await hashPw(
@@ -126,20 +148,19 @@ app.post("/register", async (req, res) => {
 
     // Generate KEK using the password as the PEK
     // In a real system, you would use a separate PEK, but for this example we'll use the password
-    const { kek, iv_kek, raw_kek } = await generateUserKEK(
-      pek_hash,
-      ARGON_ARGS
+    const { kek, iv_kek, raw_kek } = await genKEK(pek, ARGON_ARGS);
+
+    console.log(`\x1b[1;92mRegistered user:\x1b[0m ${uname}`);
+    console.log(`\x1b[1;96mEmail: ${email}\x1b[0m`);
+    console.log(`\x1b[1;96mPassword Hash: ${pw_hash}\x1b[0m`);
+    console.log(`\x1b[1;96mIV_KEK: ${iv_kek}\x1b[0m`);
+    console.log(`\x1b[1;96mKEK: ${kek}\x1b[0m`);
+    console.log(
+      `\x1b[1;96mRaw KEK (for debugging, should not be stored): ${raw_kek}\x1b[0m`
     );
 
-    console.log(`\x1b[1;92mRegistered user:\x1b[0m ${username}`);
-    console.log(`Email: ${email}`);
-    console.log(`Password Hash: ${pw_hash}`);
-    console.log(`IV_KEK: ${iv_kek}`);
-    console.log(`KEK: ${kek}`);
-    console.log(`Raw KEK (for debugging, should not be stored): ${raw_kek}`);
-
     // Store user data with email, hash, kek, and iv_kek
-    all_users[username] = {
+    all_users[uname] = {
       email: email,
       hash: pw_hash,
       kek: kek,
@@ -155,23 +176,23 @@ app.post("/register", async (req, res) => {
 });
 
 /********************************************************
- / Login (Signin) API endpoint
+/ Login (Signin) API endpoint
 /********************************************************/
 
 app.post("/login", async (req, res) => {
-  const username = req.body["signin-username"];
+  const uname = req.body["signin-username"];
   const pw = req.body["signin-password"];
 
-  if (!username || !pw) {
-    return res.status(400).send("Username and password are required");
+  if (!uname || !pw) {
+    return res.status(400).send("All fields are required: username & password");
   }
 
   try {
     // Fetch hash from db
     let userData = null;
 
-    if (username in all_users) {
-      userData = all_users[username];
+    if (uname in all_users) {
+      userData = all_users[uname];
     }
 
     if (!userData) {
@@ -180,16 +201,11 @@ app.post("/login", async (req, res) => {
 
     const isValid = await verifyPw(pw, userData.hash);
     if (isValid) {
-      console.log(`\x1b[1;92mUser signed in:\x1b[0m ${username}`);
-
-      // If the user has a KEK, print the KEK information
-      if (userData && userData.kek && userData.iv_kek) {
-        console.log(`Email: ${userData.email}`);
-        console.log(`Password Hash: ${userData.hash}`);
-        console.log(`IV_KEK: ${userData.iv_kek}`);
-        console.log(`KEK: ${userData.kek}`);
-      }
-
+      console.log(`\x1b[1;92mUser signed in:\x1b[0m ${uname}`);
+      console.log(`\x1b[1;96mEmail: ${userData.email}\x1b[0m`);
+      console.log(`\x1b[1;96mPassword Hash: ${userData.hash}\x1b[0m`);
+      console.log(`\x1b[1;96mIV_KEK: ${userData.iv_kek}\x1b[0m`);
+      console.log(`\x1b[1;96mKEK: ${userData.kek}\x1b[0m`);
       res.status(200).send();
     } else {
       res.status(401).send("Invalid username or password");
@@ -199,6 +215,71 @@ app.post("/login", async (req, res) => {
     return res.status(500).send("Internal server error");
   }
 });
+
+/********************************************************
+/ File Encryption API endpoint
+/********************************************************/
+
+app.post("/encrypt-file", async (req, res) => {
+  try {
+    const { fileName, fileType, fileSize, fileContent, filePw } = req.body;
+
+    if (!fileName || !fileType || !fileSize || !fileContent || !filePw) {
+      return res.status(400).json({
+        error:
+          "All fields are required: fileName, fileType, fileSize, fileContent, & filePw",
+      });
+    }
+
+    // Step 1: Generate a Data Encryption Key (DEK) for the file
+    const dek = crypto.randomBytes(32); // 256-bit key
+
+    // Step 2: Generate IV for file encryption
+    const iv_file = genIV();
+
+    // Step 3: Decrypt base64 file content to get raw bytes
+    const fileBytes = Buffer.from(fileContent, "base64");
+
+    // Step 4: Encrypt file with DEK
+    const encryptedFile = encryptData(dek, iv_file, fileBytes);
+
+    // Step 5: Generate IV for DEK encryption
+    const iv_dek = genIV();
+
+    // Step 6: Generate KEK from user's PEK
+    const argonOptions = {
+      memCost: ARGON_MEM_COST,
+      timeCost: ARGON_TIME_COST,
+      threads: ARGON_THREADS,
+    };
+
+    const { kek, iv_kek, raw_kek } = await genKEK(pek, argonOptions);
+
+    // Step 7: Encrypt DEK with the raw KEK
+    const kekBuffer = Buffer.from(raw_kek, "base64");
+    const encrypted_dek = encryptData(kekBuffer, iv_dek, dek);
+
+    // Step 8: Prepare response payload
+    const payload = {
+      fileName,
+      fileType,
+      fileSize,
+      iv_file: toBase64(iv_file),
+      iv_dek: toBase64(iv_dek),
+      encrypted_dek: toBase64(encrypted_dek),
+      encrypted_file: toBase64(encryptedFile),
+    };
+
+    res.status(200).json(payload);
+  } catch (error) {
+    console.error("Error encrypting file:", error);
+    res.status(500).json({ error: "Failed to encrypt file" });
+  }
+});
+
+/********************************************************
+/ Server configuration
+/********************************************************/
 
 const options = {
   key: fs.readFileSync("./certs/localhost-key.pem"),
@@ -213,7 +294,8 @@ https.createServer(options, app).listen(PORT, () => {
   );
 });
 
-// Uncomment the following lines to run the server on HTTP instead of HTTPS
+// To run the server on HTTP instead of HTTPS:
+//
 // const PORT = process.env.PORT || 3000;
 // app.listen(PORT, () => {
 //   console.log(
