@@ -7,7 +7,7 @@ import { fromId, queryAll, onClick, regPwToggle } from "./util.js";
 import { toBase64, encryptFile } from "./encrypt.js";
 
 /********************************************************
- / HTML Templates
+/ HTML Templates
 /********************************************************/
 
 // HTML templates for file list and actions

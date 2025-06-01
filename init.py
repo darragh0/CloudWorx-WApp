@@ -168,24 +168,25 @@ def run_cmd(cmd: str, *, indent: int = 0, output: bool = True) -> bool:  # noqa:
             printed = False
             starts_w_progress = False
 
-            for line in process.stdout:
-                if line := line.strip():
-                    printed = True
-                    if line.startswith("Progress"):
-                        starts_w_progress = True
-                    elif starts_w_progress:
-                        starts_w_progress = False
-                        print()
-                    _print(
-                        f" | {line}",
-                        indent=indent,
-                        color=Color.DIM,
-                        end="\r" if starts_w_progress else "\n",
-                    )
+            if process.stdout is not None:
+                for line in process.stdout:
+                    if line := line.strip():
+                        printed = True
+                        if line.startswith("Progress"):
+                            starts_w_progress = True
+                        elif starts_w_progress:
+                            starts_w_progress = False
+                            print()
+                        _print(
+                            f" | {line}",
+                            indent=indent,
+                            color=Color.DIM,
+                            end="\r" if starts_w_progress else "\n",
+                        )
 
             return_code = process.wait()
 
-            if not printed:
+            if not printed and process.stderr is not None:
                 for line in process.stderr:
                     if line := line.strip():
                         if line.startswith("Progress"):
@@ -233,7 +234,10 @@ def install_mkcert() -> bool:
                 return True
 
     perr("No supported package manager found", indent=4)
-    pinfo("Please install mkcert manually (https://github.com/FiloSottile/mkcert)", indent=4)
+    pinfo(
+        "Please install mkcert manually (https://github.com/FiloSottile/mkcert)",
+        indent=4,
+    )
     return False
 
 
@@ -271,7 +275,10 @@ def check_env() -> None:
                 key, val = line.split("=", 1)
                 if key.strip() not in ENV_KEYS:
                     err = True
-                    perr(f"Unknown key in `.env`: {key} (expected one of {', '.join(ENV_KEYS)})", indent=2)
+                    perr(
+                        f"Unknown key in `.env`: {key} (expected one of {', '.join(ENV_KEYS)})",
+                        indent=2,
+                    )
                     continue
                 if not val.strip():
                     err = True
@@ -312,11 +319,15 @@ def check_certs() -> None:
         perr("mkcert is not installed", indent=2)
         install = yn_prompt("Install mkcert?", indent=2)
         if not install:
-            perr("Please install mkcert to continue (https://github.com/FiloSottile/mkcert)")
+            perr(
+                "Please install mkcert to continue (https://github.com/FiloSottile/mkcert)"
+            )
             sys.exit(3)
 
         if not install_mkcert():
-            perr("Failed to install mkcert. Please install manually (https://github.com/FiloSottile/mkcert)")
+            perr(
+                "Failed to install mkcert. Please install manually (https://github.com/FiloSottile/mkcert)"
+            )
             sys.exit(3)
     else:
         psuccess("mkcert is installed", indent=2)
@@ -326,10 +337,16 @@ def check_certs() -> None:
         perr("Failed to install local CA", indent=2)
         sys.exit(3)
 
-    both_files_exist = Path(certs_dir / "localhost-key.pem").exists() and Path(certs_dir / "localhost.pem").exists()
+    both_files_exist = (
+        Path(certs_dir / "localhost-key.pem").exists()
+        and Path(certs_dir / "localhost.pem").exists()
+    )
     if not both_files_exist:
         pinfo("Generating certificates", indent=2)
-        if not run_cmd("mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost", indent=4):
+        if not run_cmd(
+            "mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost",
+            indent=4,
+        ):
             perr("Failed to generate certificates", indent=2)
             sys.exit(3)
 

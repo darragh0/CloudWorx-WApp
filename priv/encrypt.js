@@ -111,29 +111,6 @@ function genKEK(pek) {
 }
 
 /**
- * Extract Argon2 hash parameters from hash string.
- *
- * @param {string} hash
- * @returns
- */
-function extractHashParams(hash) {
-  const match = hash.match(/argon2id\$v=(\d+)\$m=(\d+),t=(\d+),p=(\d+)\$(.*)/);
-  if (!match) {
-    throw new Error("Invalid Argon2 hash format");
-  }
-
-  const saltAndHash = match[5];
-  const parts = saltAndHash.split("$");
-
-  return {
-    salt: parts[0],
-    p: parseInt(match[4], 10),
-    m: parseInt(match[2], 10),
-    t: parseInt(match[3], 10),
-  };
-}
-
-/**
  * Hash a password with Argon2id.
  *
  * @param {string} pw Password to hash

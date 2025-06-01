@@ -14,7 +14,6 @@ import {
   hashPw,
   genED25519Pair,
   toBase64,
-  extractHashParams,
 } from "./encrypt.js";
 
 import { join, resolve } from "path";
@@ -64,6 +63,8 @@ for (const envVar of [
   "ARGON_MEM_COST",
   "ARGON_TIME_COST",
   "ARGON_THREADS",
+  "NETWORK_HOST",
+  "NETWORK_PORT",
 ]) {
   if (!process.env[envVar]) {
     logger.crit(`Missing env var: \x1b[93m\`${envVar}\`\x1b[0m`);
@@ -75,6 +76,8 @@ const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
 const ARGON_MEM_COST = process.env.ARGON_MEM_COST;
 const ARGON_TIME_COST = process.env.ARGON_TIME_COST;
 const ARGON_THREADS = process.env.ARGON_THREADS;
+const NETWORK_HOST = process.env.NETWORK_HOST;
+const NETWORK_PORT = process.env.NETWORK_PORT;
 
 /********************************************************
  * Page routing
@@ -107,6 +110,39 @@ app.get("/", (_, res) => {
  * Registration (Signup) API endpoint
  ********************************************************/
 
+/**
+ * Check if username or email already exists via API call
+ *
+ * @param {string} username Username to check
+ * @param {string} email Email to check
+ * @returns {Promise<boolean>} True if user exists, false otherwise
+ */
+async function checkUserExists(username, email) {
+  try {
+    const apiUrl = `${NETWORK_HOST}:${NETWORK_PORT}/api/auth/users`;
+    const response = await fetch(apiUrl);
+
+    if (!response.ok) {
+      logger.warn(`Failed to fetch users from API: ${response.status}`);
+      return false;
+    }
+
+    const data = await response.json();
+
+    if (!data.users || !Array.isArray(data.users)) {
+      logger.warn("Invalid response format from users API");
+      return false;
+    }
+
+    return data.users.some(
+      (user) => user.username === username || user.email === email
+    );
+  } catch (error) {
+    logger.warn(`Error checking user existence: ${error.message}`);
+    return false;
+  }
+}
+
 app.post("/register", async (req, res) => {
   const uname = req.body.username;
   const email = req.body.email;
@@ -138,6 +174,14 @@ app.post("/register", async (req, res) => {
     return res.status(400).send(emsg);
   }
 
+  logger.debug("Checking if user already exists");
+  const userExists = await checkUserExists(uname, email);
+  if (userExists) {
+    const emsg = "Username or email already exists";
+    logger.err(emsg);
+    return res.status(403).send(emsg);
+  }
+
   logger.debug("Validating reCAPTCHA response");
   const recaptchaResult = await verifyRecaptcha(capRes, RECAPTCHA_SECRET_KEY);
   if (!recaptchaResult.success) {
@@ -159,7 +203,7 @@ app.post("/register", async (req, res) => {
       ARGON_THREADS
     );
 
-    const { salt, p, m, t } = extractHashParams(pek);
+    const salt = pek.split("$")[4] || "";
 
     logger.debug("Hashing auth password");
     const pw_hash = await hashPw(
@@ -180,15 +224,40 @@ app.post("/register", async (req, res) => {
       public_key: toBase64(publicKey),
       iv_KEK: iv_kek,
       salt: salt,
-      p: p,
-      m: m,
-      t: t,
+      p: ARGON_THREADS,
+      m: ARGON_MEM_COST,
+      t: ARGON_TIME_COST,
       encrypted_KEK: kek,
     };
 
     logger.debug(`Payload created:\n${JSON.stringify(payload, null, 2)}`);
 
-    // Store user data with email, hash, kek, iv_kek, and stripped public key
+    logger.debug("Sending registration request to API");
+    const apiUrl = `${NETWORK_HOST}:${NETWORK_PORT}/api/auth/register`;
+    const apiResponse = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const responseData = await apiResponse.json();
+
+    if (apiResponse.status !== 201) {
+      const errorMessage = responseData.message || responseData.error || 'Registration failed';
+      logger.err(`API registration failed: ${errorMessage}`);
+      throw new Error(errorMessage);
+    }
+
+    if (apiResponse.status !== 201) {
+      const errorMessage = responseData.message || responseData.error || 'Registration failed';
+      logger.err(`API registration failed: ${errorMessage}`);
+      return res.status(apiResponse.status).json({ error: errorMessage });
+    }
+
+    logger.debug("API registration successful");
+
     all_users[uname] = {
       email: email,
       hash: pw_hash,
@@ -199,8 +268,12 @@ app.post("/register", async (req, res) => {
 
     fs.writeFileSync("./users.json", JSON.stringify(all_users, null, 2));
 
-    console.debug(`User \x1b[1;96m${uname}\x1b[0m registered successfully`);
-    res.status(200).json({ privateKey });
+    logger.debug(`User \x1b[1;96m${uname}\x1b[0m registered successfully`);
+    res.status(201).json({ 
+      privateKey: toBase64(privateKey),
+      token: responseData.token,
+      user_id: responseData.user_id
+    });
   } catch (err) {
     logger.err(err.message);
     return res.status(500).send("Internal server error");
@@ -220,7 +293,6 @@ app.post("/login", async (req, res) => {
   }
 
   try {
-    // Fetch hash from db
     let userData = null;
 
     if (uname in all_users) {
@@ -232,15 +304,41 @@ app.post("/login", async (req, res) => {
     }
 
     const isValid = await verifyPw(pw, userData.hash);
-    if (isValid) {
-      console.debug(`User \x1b[1;96m${uname}\x1b[0m logged in successfully`);
-      res.status(200).send();
-    } else {
-      res.status(400).send("Invalid username or password");
+    if (!isValid) {
+      return res.status(400).send("Invalid username or password");
     }
+
+    logger.debug("Sending login request to API");
+    const apiUrl = `${NETWORK_HOST}:${NETWORK_PORT}/api/auth/login`;
+    const apiPayload = {
+      username: uname,
+      entered_auth_password: pw
+    };
+
+    const apiResponse = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(apiPayload),
+    });
+
+    const responseData = await apiResponse.json();
+
+    if (apiResponse.status !== 200) {
+      const errorMessage = responseData.message || responseData.error || 'Login failed';
+      logger.err(`API login failed: ${errorMessage}`);
+      return res.status(apiResponse.status).json({ error: errorMessage });
+    }
+
+    logger.debug(`User \x1b[1;96m${uname}\x1b[0m logged in successfully`);
+    res.status(200).json({ 
+      token: responseData.token,
+      user_id: responseData.user_id
+    });
   } catch (err) {
-    console.error(err);
-    return res.status(500).send("Internal server error");
+    logger.err(`Login error: ${err.message}`);
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
