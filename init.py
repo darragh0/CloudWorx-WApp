@@ -17,7 +17,7 @@ from time import sleep
 
 __version__ = "0.1.0"
 
-ROOT_DIR: Path = Path(__file__).parents[1]
+ROOT_DIR: Path = Path(__file__).parent
 ENV_KEYS: set[str] = {
     "RECAPTCHA_SECRET_KEY",
     "ARGON_MEM_COST",
