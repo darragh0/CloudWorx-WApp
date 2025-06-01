@@ -205,7 +205,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const closeButtons = queryAll(".modal__close");
   const signOutBtn = fromId("sign-out-btn");
 
-  let curFilter = "all";
+  let curFilter = "owned";
   let curFileIndex = null;
   let fileToDownload = null;
 

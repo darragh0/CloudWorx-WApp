@@ -13,7 +13,13 @@ import { valPw, valUsername, valEmail } from "./val.js";
  */
 function openModal(modal) {
   modal.classList.add("modal--active");
-  modal.querySelector("input").focus();
+  const focusableElement =
+    modal.querySelector("input") ||
+    modal.querySelector("textarea") ||
+    modal.querySelector("button");
+  if (focusableElement) {
+    focusableElement.focus();
+  }
 }
 
 /**
@@ -133,6 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const signupModal = fromId("signup-modal");
   const signinModal = fromId("signin-modal");
   const filepwModal = fromId("file-password-modal");
+  const privateKeyModal = fromId("private-key-modal");
   const navGetStarted = fromId("nav-get-started");
   const heroGetStarted = fromId("hero-get-started");
   const signInLink = fromId("sign-in-link");
@@ -145,6 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
     signupModal.classList.remove("modal--active");
     signinModal.classList.remove("modal--active");
     filepwModal.classList.remove("modal--active");
+    privateKeyModal.classList.remove("modal--active");
   };
 
   const regModal = (el, modal) => {
@@ -181,12 +189,14 @@ document.addEventListener("DOMContentLoaded", () => {
       if (e.target === signinModal) {
         closeModal(signinModal);
       }
+      if (e.target === privateKeyModal) {
+        closeModal(privateKeyModal);
+      }
     });
   }
   // Update navigation based on auth status
   function updateNavigation(isAuthenticated) {
     const navCenter = document.querySelector(".nav__center");
-    const navRight = document.querySelector(".nav__right");
     const signInLink = fromId("sign-in-link");
     const navGetStarted = fromId("nav-get-started");
     const heroGetStarted = fromId("hero-get-started");
@@ -222,12 +232,13 @@ document.addEventListener("DOMContentLoaded", () => {
       if (navGetStarted) {
         navGetStarted.textContent = "Sign out";
         navGetStarted.id = "sign-out-btn";
+        navGetStarted.removeEventListener("click", () => {});
         onClick(navGetStarted, (e) => {
+          closeAllModals();
           e.preventDefault();
           localStorage.removeItem("auth");
           const isFilesPage = window.location.pathname.endsWith("files");
           const is404Page = window.location.pathname.endsWith("404");
-          console.log(is404Page);
 
           if (isFilesPage || is404Page) {
             window.location.href = "/";
@@ -296,6 +307,46 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Private key download functionality
+  const privateKeyTextarea = fromId("private-key-text");
+  const downloadPrivateKeyBtn = fromId("download-private-key");
+  const continueToFilesBtn = fromId("continue-to-files");
+
+  if (downloadPrivateKeyBtn) {
+    onClick(downloadPrivateKeyBtn, () => {
+      const privateKey = privateKeyTextarea.value;
+      if (privateKey) {
+        // Create a blob with the private key content
+        const blob = new Blob([privateKey], { type: "text/plain" });
+        const url = window.URL.createObjectURL(blob);
+
+        // Create a temporary download link
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "private-key.pem";
+        document.body.appendChild(a);
+        a.click();
+
+        // Cleanup
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }
+    });
+  }
+
+  if (continueToFilesBtn) {
+    onClick(continueToFilesBtn, () => {
+      window.location.href = "/files";
+    });
+  }
+
+  // Function to show private key modal
+  function showPrivateKeyModal(privateKey) {
+    privateKeyTextarea.value = privateKey;
+    closeAllModals();
+    openModal(privateKeyModal);
+  }
+
   // Form handling
   const signupForm = fromId("signup-form");
   const signinForm = fromId("signin-form");
@@ -352,12 +403,15 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      const form = e.target;
-      const formData = new FormData(form);
-      signupData = Object.fromEntries(formData.entries());
-      const captchaResponse = signupData["g-recaptcha-response"];
+      signupData = {
+        username: username,
+        email: email,
+        password: password,
+        filePassword: null,
+        recaptchaResponse: grecaptcha.getResponse(),
+      };
 
-      if (!captchaResponse) {
+      if (!signupData.recaptchaResponse) {
         isValid = showErr(
           "recaptcha-error",
           "Please complete the reCAPTCHA verification",
@@ -405,7 +459,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      signupData["signup-file-password"] = filepw;
+      signupData.filePassword = filepw;
 
       // Send complete signup data to backend
       const res = await fetch("/register", {
@@ -435,10 +489,29 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      // Parse the response to get the private key
+      const responseData = await res.json();
+      const privateKey = responseData.privateKey;
+
       // For demo purposes, set the user as authenticated
       localStorage.setItem("auth", "true");
       updateNavigation(true);
-      showSuccess(fromId("file-password-submit"), filepwForm, filepwModal);
+
+      // Show success message briefly, then show private key modal
+      const submitBtn = fromId("file-password-submit");
+      const prevMsg = submitBtn.innerHTML;
+      const successMsg = "Success <i class='fa-solid fa-check'></i>";
+      submitBtn.classList.add("form__submit--success");
+      submitBtn.innerHTML = successMsg;
+
+      // After 1.5s, close modal and show private key
+      setTimeout(() => {
+        submitBtn.classList.remove("form__submit--success");
+        submitBtn.innerHTML = prevMsg;
+        filepwForm.reset();
+        closeAllModals();
+        showPrivateKeyModal(privateKey);
+      }, 1500);
 
       // Clear stored signup data after successful registration
       signupData = null;
@@ -474,9 +547,10 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      const form = e.target;
-      const formData = new FormData(form);
-      const data = Object.fromEntries(formData.entries());
+      const data = {
+        username: username,
+        password: password,
+      };
 
       const res = await fetch("/login", {
         method: "POST",

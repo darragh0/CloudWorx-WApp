@@ -264,7 +264,7 @@ body.dark-mode .hero-section {
   display: block;
 }
 .form__info {
-  background-color: #f8f9fa;
+  background-color: #adadad;
   border-left: 4px solid #1a66ff;
   padding: 12px;
   border-radius: 0.25em;
@@ -306,6 +306,66 @@ body.dark-mode .hero-section {
 .form__submit--success {
   border: none;
   width: 50%;
+}
+
+/* Private Key Modal Styles */
+.private-key-display {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.private-key-container {
+  position: relative;
+}
+
+.private-key-textarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 15px;
+  border: 2px solid #e2e2e2;
+  border-radius: 0.5em;
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  background-color: #f8f9fa;
+  color: #333;
+  resize: vertical;
+  white-space: pre;
+  overflow-wrap: break-word;
+}
+.private-key-textarea:focus {
+  outline: none;
+  border-color: #1a66ff;
+  box-shadow: 0 0 0 3px rgba(26, 102, 255, 0.1);
+}
+
+.private-key-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form__submit--primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.form__submit--primary i {
+  font-size: 0.9em;
+}
+
+.form__submit--secondary {
+  background: transparent;
+  color: #1a66ff;
+}
+.form__submit--secondary:hover {
+  background: #1a66ff;
+  color: #fff;
+}
+.form__submit--secondary i {
+  font-size: 0.9em;
 }
 
 /* Dark Mode Modal Styles */
@@ -368,6 +428,15 @@ body.dark-mode .form__submit {
 body.dark-mode .form__submit:hover {
   background: #a3c4ff;
 }
+body.dark-mode .private-key-textarea {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: #3a3a50;
+  color: #fff;
+}
+body.dark-mode .private-key-textarea:focus {
+  border-color: #a3c4ff;
+  box-shadow: 0 0 0 3px rgba(163, 196, 255, 0.1);
+}
 
 /* Page Header Styles */
 .page-header {
@@ -409,6 +478,10 @@ body.dark-mode .form__submit:hover {
 .g-recaptcha {
   margin: auto;
   margin-top: 1em;
+}
+
+#signup-modal {
+  padding-top: 5em;
 }
 
 .files-container {

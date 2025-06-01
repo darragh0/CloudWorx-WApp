@@ -233,6 +233,55 @@
       </div>
     </div>
 
+    <!-- Private Key Download Modal -->
+    <div class="modal" id="private-key-modal">
+      <div class="modal__content">
+        <div class="modal__header">
+          <h2>Download Your Private Key</h2>
+          <button class="modal__close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="private-key-display">
+          <div class="form__info">
+            <p>
+              <strong>Important:</strong> Your private key is required to
+              decrypt files shared with you. Please download and store it
+              securely.
+            </p>
+            <br />
+            <p>
+              <em>
+                You will not be able to access this key again once you close
+                this window.
+              </em>
+            </p>
+          </div>
+          <div class="private-key-container">
+            <textarea
+              id="private-key-text"
+              class="private-key-textarea"
+              readonly
+            ></textarea>
+          </div>
+          <div class="private-key-actions">
+            <button
+              type="button"
+              id="download-private-key"
+              class="form__submit form__submit--primary"
+            >
+              <i class="fas fa-download"></i> Download Private Key
+            </button>
+            <button
+              type="button"
+              id="continue-to-files"
+              class="form__submit form__submit--secondary"
+            >
+              Continue to Files <i class="fas fa-arrow-right"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="js/main.js"></script>
   </body>
 </html>

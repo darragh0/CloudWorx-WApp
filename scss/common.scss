@@ -299,7 +299,7 @@ body.dark-mode {
   &__input {
     padding: 11px;
     font-size: 0.95rem;
-    border: 1px solid $lgrey;
+    border: 1px solid #a0a0a0;
     border-radius: 0.5em;
 
     &:focus {
@@ -333,7 +333,7 @@ body.dark-mode {
   }
 
   &__info {
-    background-color: #f8f9fa;
+    background-color: #dadada;
     border-left: 4px solid $blue;
     padding: 12px;
     border-radius: 0.25em;
@@ -380,6 +380,72 @@ body.dark-mode {
       border: none;
       width: 50%;
     }
+  }
+}
+
+/* Private Key Modal Styles */
+.private-key-display {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.private-key-container {
+  position: relative;
+}
+
+.private-key-textarea {
+  width: 100%;
+  height: auto;
+  padding: 15px;
+  border: 2px solid $lgrey;
+  border-radius: 0.5em;
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  background-color: #f8f9fa;
+  color: #333;
+  resize: vertical;
+  white-space: pre;
+  overflow: hidden;
+  overflow-wrap: break-word;
+
+  &:focus {
+    outline: none;
+    border-color: $blue;
+    box-shadow: 0 0 0 3px rgba(26, 102, 255, 0.1);
+  }
+}
+
+.private-key-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form__submit--primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  i {
+    font-size: 0.9em;
+  }
+}
+
+.form__submit--secondary {
+  margin-top: -0.4em;
+  background: transparent;
+  color: $blue;
+
+  &:hover {
+    background: $blue;
+    color: $lbg;
+  }
+
+  i {
+    font-size: 0.9em;
   }
 }
 
@@ -453,6 +519,10 @@ body.dark-mode {
       color: $dtxt;
     }
 
+    &__info {
+      background-color: #f3f3f3;
+    }
+
     &__error {
       color: #ff6b6b;
     }
@@ -468,6 +538,18 @@ body.dark-mode {
       &:hover {
         background: $llblue;
       }
+    }
+  }
+
+  // Dark mode private key modal styles
+  .private-key-textarea {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: #3a3a50;
+    color: $dtxt;
+
+    &:focus {
+      border-color: $llblue;
+      box-shadow: 0 0 0 3px rgba(163, 196, 255, 0.1);
     }
   }
 }
@@ -515,4 +597,20 @@ body.dark-mode {
 .g-recaptcha {
   margin: auto;
   margin-top: 1em;
+}
+
+#signup-modal {
+  padding-top: 5em;
+
+  .modal__content {
+    width: 36%;
+  }
+}
+
+#private-key-modal {
+  padding-top: 4em;
+
+  .modal__content {
+    width: 36%;
+  }
 }

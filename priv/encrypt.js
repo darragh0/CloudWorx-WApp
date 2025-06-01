@@ -1,10 +1,24 @@
 /**
  * @file encrypt.js - Server-side crypto utilities.
  * @author darragh0
+ *
+ * @typedef {object} ED25519KeyPair
+ * @property {string} publicKey - Public key in PEM format
+ * @property {string} privateKey - Private key in PEM format
+ *
+ * @typedef {object} KEKObj
+ * @property {string} kek Encrypted KEK in base64
+ * @property {string} iv_kek IV used for KEK encryption in base64
+ *
+ * @typedef {object} Argon2HashParams
+ * @property {string} salt Salt
+ * @property {int} p Parallelism factor (threads)
+ * @property {int} m Memory cost
+ * @property {int} t Time cost
  */
 
 import crypto from "crypto";
-import { argon2d } from "argon2";
+import argon2 from "argon2";
 
 /**
  * Generate random IV.
@@ -16,17 +30,20 @@ function genIV() {
 }
 
 /**
- * Convert buffer to base64 string.
+ * Convert buffer or string to base64 string.
  *
- * @param {Buffer} buf Buffer to convert
+ * @param {Buffer|string} bors Buffer or string to convert
  * @returns {string} Base64 encoded string
  */
-function toBase64(buf) {
-  return buf.toString("base64");
+function toBase64(bors) {
+  if (typeof bors === "string") {
+    bors = Buffer.from(bors);
+  }
+  return bors.toString("base64");
 }
 
 /**
- * Convert a base64 string to Buffer
+ * Convert base64 string to Buffer.
  *
  * @param {string} base64 Base64 string to convert
  * @returns {Buffer} Resulting buffer
@@ -55,7 +72,6 @@ function encryptData(key, iv, data) {
 }
 
 /**
- *
  * Decrypt data with AES-GCM.
  *
  * @param {Buffer} key Key for decryption (32 bytes for AES-256)
@@ -65,8 +81,8 @@ function encryptData(key, iv, data) {
  */
 function decryptData(key, iv, data) {
   // Extract auth tag (last 16 bytes)
-  const authTag = data.slice(data.length - 16);
-  const encryptedData = data.slice(0, data.length - 16);
+  const authTag = data.subarray(data.length - 16);
+  const encryptedData = data.subarray(0, data.length - 16);
 
   const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
   decipher.setAuthTag(authTag);
@@ -76,48 +92,51 @@ function decryptData(key, iv, data) {
 
 /**
  * Generate KEK from PEK.
- * Uses Argon2id to hash PEK & uses that hash as the key for AES encryption.
  *
- * @param {string|Buffer} pek PEK to derive KEK from
- * @param {object} argonOptions Options for Argon2id hashing
- * @returns {object} Object containing the KEK and IV used
+ * @param {string} pek PEK to derive KEK from
+ * @returns {KEKObj} Object containing KEK & IV used
  */
-async function genKEK(pek, argonOptions) {
-  // Convert PEK to buffer if it's a string
-  const pekBuffer = typeof pek === "string" ? Buffer.from(pek) : pek;
-
-  // Hash the PEK using Argon2id
-  const hash = await argon2.hash(pekBuffer.toString("hex"), {
-    type: argon2.argon2id,
-    memoryCost: argonOptions.memCost,
-    timeCost: argonOptions.timeCost,
-    parallelism: argonOptions.threads,
-    raw: true, // Get raw hash bytes
-  });
-
-  // Use the hash as the key for AES encryption
-  const hashBuffer = Buffer.from(hash);
-
-  // Generate a random initialization vector for KEK encryption
+function genKEK(pek) {
+  const pekbuf = Buffer.from(pek);
   const iv_kek = genIV();
-
-  // Generate a random key to use as the KEK
-  const rawKek = crypto.randomBytes(32);
+  const kek = crypto.randomBytes(32);
 
   // Encrypt the KEK using the hashed PEK as the key
-  const encryptedKEK = encryptData(hashBuffer.slice(0, 32), iv_kek, rawKek);
+  const encryptedKEK = encryptData(pekbuf.subarray(0, 32), iv_kek, kek);
 
   return {
     kek: toBase64(encryptedKEK),
     iv_kek: toBase64(iv_kek),
-    raw_kek: toBase64(rawKek), // This is just for debugging, should not be stored
   };
 }
 
 /**
- * Hash a password using Argon2id.
+ * Extract Argon2 hash parameters from hash string.
  *
- * @param {string|Buffer} pw Password to hash
+ * @param {string} hash
+ * @returns
+ */
+function extractHashParams(hash) {
+  const match = hash.match(/argon2id\$v=(\d+)\$m=(\d+),t=(\d+),p=(\d+)\$(.*)/);
+  if (!match) {
+    throw new Error("Invalid Argon2 hash format");
+  }
+
+  const saltAndHash = match[5];
+  const parts = saltAndHash.split("$");
+
+  return {
+    salt: parts[0],
+    p: parseInt(match[4], 10),
+    m: parseInt(match[2], 10),
+    t: parseInt(match[3], 10),
+  };
+}
+
+/**
+ * Hash a password with Argon2id.
+ *
+ * @param {string} pw Password to hash
  * @param {int} memCost Memory cost
  * @param {int} timeCost Time cost
  * @param {int} threads Number of threads
@@ -134,6 +153,42 @@ async function hashPw(pw, memCost, timeCost, threads) {
   return hash;
 }
 
+/**
+ * Remove PEM header & footer from a key.
+ *
+ * @param {string} pemKey PEM formatted key
+ * @returns {string} Key content without header & footer
+ */
+function _stripPemHeaders(pemKey) {
+  return pemKey
+    .replace(/-----BEGIN [A-Z ]+-----\r?\n?/, "")
+    .replace(/\r?\n?-----END [A-Z ]+-----\r?\n?/, "")
+    .replace(/\r?\n/g, "");
+}
+
+/**
+ * Generate Ed25519 keypair in PEM format.
+ *
+ * @returns {ED25519KeyPair} Object containing private and public keys in PEM format
+ */
+function genED25519Pair() {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519", {
+    publicKeyEncoding: {
+      type: "spki",
+      format: "pem",
+    },
+    privateKeyEncoding: {
+      type: "pkcs8",
+      format: "pem",
+    },
+  });
+
+  return {
+    publicKey: _stripPemHeaders(publicKey),
+    privateKey: _stripPemHeaders(privateKey),
+  };
+}
+
 export {
   genIV,
   toBase64,
@@ -142,4 +197,6 @@ export {
   decryptData,
   genKEK,
   hashPw,
+  genED25519Pair,
+  extractHashParams,
 };

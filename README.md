@@ -26,10 +26,10 @@ HTML/JS web client for [CloudWorx](https://github.com/Nanda128/CloudWorx-Backend
 
 ### Automated Setup (Recommended)
 
-Use the Python setup script ([`init-scripts/init.py`](./init-scripts/init.py)) (assuming you have [Python](https://www.python.org) installed).
+Use the Python setup script ([`init.py`](./init.py)) (assuming you have [Python](https://www.python.org) installed).
 
 ```sh
-python ./init-scripts/init.py
+python ./init.py
 ```
 
 ### Manual Setup
@@ -52,6 +52,25 @@ mkdir certs && mkcert -key-file certs/localhost-key.pem -cert-file certs/localho
 #### 2. Install dependencies (assuming you have [Node.js](https://nodejs.org/en) installed)
 ```sh
 npm install
+```
+
+## Project File Structure
+
+After following the setup steps, the project tree should look like the following (excluding some files/folders). Only files within the `pub` folder are visible to the end user.
+
+The console output of the JS files in the `priv` folder is sent to stdout of the terminal you ran the application in.
+
+```
+.
+├── certs                 -> Generated SSL certificates
+├── node-modules          -> Node modules (argon2, express, etc.)
+├── scss                  -> Uncompiled SCSS files
+├── priv                  -> Server-side functionality (server setup, registration, login, etc.)
+├── pub                   -> Client-side files (HTML, JS, CSS compiled from SCSS, etc.)
+├── .env                  -> Required environment variables
+├── init.py               -> Python setup script
+├── package.json          -> Project manifest
+└── README.md
 ```
 
 ## 🔒 Why HTTPS?

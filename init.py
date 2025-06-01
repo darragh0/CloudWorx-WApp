@@ -83,7 +83,7 @@ def _print(
 
 def pwindows_tip() -> None:
     _print(
-        r'Start-Process wt.exe -Verb RunAs -ArgumentList "python $PWD\init-scripts\init.py"',
+        r'Start-Process wt.exe -Verb RunAs -ArgumentList "python $PWD\init.py"',
         indent=4,
         color=Color.DIM,
     )
