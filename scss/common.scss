@@ -405,9 +405,7 @@ body.dark-mode {
   line-height: 1.4;
   background-color: #f8f9fa;
   color: #333;
-  resize: vertical;
-  white-space: pre;
-  overflow: hidden;
+  resize: none;
   overflow-wrap: break-word;
 
   &:focus {

@@ -1,5 +1,5 @@
 /**
- * @file util.js – General utility functions.
+ * @file util.js - General utility functions.
  * @author darragh0
  */
 
@@ -59,7 +59,7 @@ function regPwToggle(toggle) {
  * Call given function when element is clicked.
  *
  * @param {HTMLElement} el Element to listen on
- * @param {(e?: Event) => void} cb Callback function
+ * @param {EventListenerCallback} cb Callback function
  */
 function onClick(el, cb) {
   el.addEventListener("click", (e) => {
@@ -72,7 +72,7 @@ function onClick(el, cb) {
  *
  * @param {HTMLElement} el Element to listen on
  * @param {string} key Key to listen for
- * @param {(e?: Event) => void} cb Callback function
+ * @param {EventListenerCallback} cb Callback function
  */
 function onKeydown(el, key, cb) {
   el.addEventListener("keydown", (e) => {

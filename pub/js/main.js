@@ -4,7 +4,7 @@
  */
 
 import { fromId, queryAll, regPwToggle, onClick, onKeydown } from "./util.js";
-import { valPw, valUsername, valEmail } from "./val.js";
+import { valPassword, valUsername, valEmail } from "./validate.js";
 
 /**
  * Open the given modal.
@@ -13,10 +13,7 @@ import { valPw, valUsername, valEmail } from "./val.js";
  */
 function openModal(modal) {
   modal.classList.add("modal--active");
-  const focusableElement =
-    modal.querySelector("input") ||
-    modal.querySelector("textarea") ||
-    modal.querySelector("button");
+  const focusableElement = modal.querySelector("input") || modal.querySelector("textarea") || modal.querySelector("button");
   if (focusableElement) {
     focusableElement.focus();
   }
@@ -200,14 +197,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const signInLink = fromId("sign-in-link");
     const navGetStarted = fromId("nav-get-started");
     const heroGetStarted = fromId("hero-get-started");
-    const isHomePage =
-      window.location.pathname === "/" || window.location.pathname === "/index";
+    const isHomePage = window.location.pathname === "/" || window.location.pathname === "/index";
 
     if (isAuthenticated) {
       // Add Files link if not already present
-      const existingFilesLink =
-        document.querySelector(".nav__link.files-link") ||
-        document.querySelector('.nav__center a[href$="/files"]');
+      const existingFilesLink = document.querySelector(".nav__link.files-link") || document.querySelector('.nav__center a[href$="/files"]');
 
       if (!existingFilesLink) {
         const filesLink = document.createElement("a");
@@ -251,8 +245,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Update hero "Get started" button on home page
       if (heroGetStarted && isHomePage) {
         heroGetStarted.textContent = "See files ";
-        heroGetStarted.innerHTML =
-          "See files &nbsp;&nbsp;<i class='fa-solid fa-arrow-right'></i>&nbsp;";
+        heroGetStarted.innerHTML = "See files &nbsp;&nbsp;<i class='fa-solid fa-arrow-right'></i>&nbsp;";
         heroGetStarted.id = "hero-see-files";
         // Remove existing event listeners
         heroGetStarted.replaceWith(heroGetStarted.cloneNode(true));
@@ -292,8 +285,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Reset hero button on home page
       const modifiedHeroBtn = fromId("hero-see-files");
       if (modifiedHeroBtn && isHomePage) {
-        modifiedHeroBtn.innerHTML =
-          "Get Started &nbsp;&nbsp;<i class='fa-solid fa-arrow-right'></i>&nbsp;";
+        modifiedHeroBtn.innerHTML = "Get Started &nbsp;&nbsp;<i class='fa-solid fa-arrow-right'></i>&nbsp;";
         modifiedHeroBtn.id = "hero-get-started";
         // Remove existing event listeners
         modifiedHeroBtn.replaceWith(modifiedHeroBtn.cloneNode(true));
@@ -353,78 +345,70 @@ document.addEventListener("DOMContentLoaded", () => {
   const filepwForm = fromId("file-password-form");
 
   // Store signup data to use after file pw is entered
-  let signupData = null;
+  let payload = null;
 
-  // Handle sign-up form submission
+  /********************************************************
+   * Registration Form -- Modal for username, email, ...
+   ********************************************************/
+
   if (signupForm) {
     signupForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       clearErrs(signupForm);
 
-      const username = fromId("signup-username").value;
+      const uname = fromId("signup-username").value;
       const email = fromId("signup-email").value;
-      const password = fromId("signup-password").value;
-      const confirmPassword = fromId("signup-confirm-password").value;
+      const pw = fromId("signup-password").value;
+      const confirmPw = fromId("signup-confirm-password").value;
 
       let isValid = true;
 
-      // Username validation
-      const usernameResult = valUsername(username);
-      if (!usernameResult.valid) {
-        isValid = showErr("signup-username-error", usernameResult.message);
+      const unameemsg = valUsername(uname);
+      if (unameemsg) {
+        isValid = showErr("signup-username-error", unameemsg);
       }
 
-      // Email validation
-      const emailResult = valEmail(email);
-      if (!emailResult.valid) {
-        isValid = showErr("signup-email-error", emailResult.message);
+      const emailemsg = valEmail(email);
+      if (emailemsg) {
+        isValid = showErr("signup-email-error", emailemsg);
       }
 
-      // Password validation
-      const passwordResult = valPw(password);
-      if (!passwordResult.valid) {
-        isValid = showErr("signup-password-error", passwordResult.message);
+      const pwemsg = valPassword(pw);
+      if (pwemsg) {
+        isValid = showErr("signup-password-error", pwemsg.message);
       }
 
-      // Confirm password validation
-      if (!confirmPassword) {
-        isValid = showErr(
-          "signup-confirm-password-error",
-          "Please confirm your password"
-        );
-      } else if (password !== confirmPassword) {
-        isValid = showErr(
-          "signup-confirm-password-error",
-          "Passwords do not match"
-        );
+      if (!confirmPw) {
+        isValid = showErr("signup-confirm-password-error", "Please confirm your password");
+      } else if (pw !== confirmPw) {
+        isValid = showErr("signup-confirm-password-error", "Passwords do not match");
       }
 
       if (!isValid) {
         return;
       }
 
-      signupData = {
-        username: username,
+      payload = {
+        username: uname,
         email: email,
-        password: password,
+        password: pw,
         filePassword: null,
         recaptchaResponse: grecaptcha.getResponse(),
       };
 
-      if (!signupData.recaptchaResponse) {
-        isValid = showErr(
-          "recaptcha-error",
-          "Please complete the reCAPTCHA verification",
-          true
-        );
+      if (!payload.recaptchaResponse) {
+        isValid = showErr("recaptcha-error", "Please complete the reCAPTCHA verification", true);
         return;
       }
 
-      // Store signup data and show PEK modal
       closeModal(signupModal);
       openModal(filepwModal);
     });
   }
+
+  /********************************************************
+   * Registration Form -- Modal for file pw
+   ********************************************************/
 
   if (filepwForm) {
     filepwForm.addEventListener("submit", async (e) => {
@@ -436,62 +420,62 @@ document.addEventListener("DOMContentLoaded", () => {
 
       let isValid = true;
 
-      // File password validation
-      const pwResult = valPw(filepw);
-      if (!pwResult.valid) {
-        isValid = showErr("file-password-error", pwResult.message);
+      const pwemsg = valPassword(filepw, "File Password");
+      if (pwemsg) {
+        isValid = showErr("file-password-error", pwemsg);
       }
 
-      // Confirm file pw validation
       if (!fileConfirmPw) {
-        isValid = showErr(
-          "file-confirm-password-error",
-          "Please confirm your password"
-        );
+        isValid = showErr("file-confirm-password-error", "Please confirm your password");
       } else if (filepw !== fileConfirmPw) {
-        isValid = showErr(
-          "file-confirm-password-error",
-          "Passwords do not match"
-        );
+        isValid = showErr("file-confirm-password-error", "Passwords do not match");
       }
 
-      if (!isValid || !signupData) {
+      if (!isValid || !payload) {
         return;
       }
 
-      signupData.filePassword = filepw;
+      payload.filePassword = filepw;
 
-      // Send complete signup data to backend
       const res = await fetch("/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(signupData),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        const errorMsg = await res.text();
-        // Check if it's a reCAPTCHA error
-        if (errorMsg.includes("reCAPTCHA")) {
-          // Go back to signup modal to show the error
-          closeModal(filepwModal);
-          openModal(signupModal);
-          showErr("recaptcha-error", errorMsg);
-          // Reset reCAPTCHA
-          if (window.grecaptcha) {
-            grecaptcha.reset();
+        const emsg = await res.text();
+
+        const check = (errPre, id) => {
+          if (emsg.startsWith(errPre)) {
+            showErr(id, emsg);
+            return true;
           }
-        } else {
-          // Go back to signup modal to show the error
-          closeModal(filepwModal);
-          openModal(signupModal);
-          showErr("signup-username-error", errorMsg);
+          return false;
+        };
+
+        if (check("File Password", "file-password-error")) return;
+
+        closeModal(filepwModal);
+        openModal(signupModal);
+
+        if (check("Email", "signup-email-error")) return;
+        if (check("User", "signup-username-error")) return;
+        if (check("Username", "signup-username-error")) return;
+        if (check("Password", "signup-password-error")) return;
+
+        showErr("recaptcha-error", emsg);
+        // Reset reCAPTCHA
+        if (window.grecaptcha) {
+          grecaptcha.reset();
         }
         return;
       }
 
-      // Parse the response to get the private key
-      const responseData = await res.json();
-      const privateKey = responseData.privateKey;
+      const data = await res.json();
+      console.log("Registration successful:", data);
+
+      const privateKey = data.privateKey;
 
       // For demo purposes, set the user as authenticated
       localStorage.setItem("auth", "true");
@@ -514,57 +498,68 @@ document.addEventListener("DOMContentLoaded", () => {
       }, 1500);
 
       // Clear stored signup data after successful registration
-      signupData = null;
+      payload = null;
     });
   }
 
-  // Handle sign-in form submission
+  /********************************************************
+   * Login Form -- Modal for username & password
+   ********************************************************/
+
   if (signinForm) {
     signinForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       clearErrs(signinForm);
 
-      const username = fromId("signin-username").value;
-      const password = fromId("signin-password").value;
+      const uname = fromId("signin-username").value;
+      const pw = fromId("signin-password").value;
 
       let isValid = true;
 
       // Username validation
-      const usernameResult = valUsername(username);
-      if (!usernameResult.valid) {
-        isValid = showErr("signin-username-error", usernameResult.message);
+      const unameemsg = valUsername(uname);
+      if (unameemsg) {
+        showErr("signin-username-error", unameemsg);
+        isValid = false;
       }
 
-      // Password validation - only check if it's empty for login
-      if (!password) {
-        isValid = showErr(
-          "signin-password-error",
-          "Please enter your password"
-        );
+      // Validation for password format ???
+      if (!pw) {
+        showErr("signin-password-error", "Please enter your password");
+        isValid = false;
       }
 
       if (!isValid) {
         return;
       }
 
-      const data = {
-        username: username,
-        password: password,
+      const payload = {
+        username: uname,
+        password: pw,
       };
 
       const res = await fetch("/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        const errorMsg = await res.text();
-        showErr("signin-password-error", errorMsg);
+        const emsg = await res.text();
+
+        if (emsg.startsWith("Username") || emsg.startsWith("User")) {
+          showErr("signin-username-error", emsg);
+          return;
+        }
+
+        showErr("signin-password-error", emsg);
         return;
       }
 
-      // TODO: Handle sign-in response (success or error)
+      const data = await res.json();
+      console.log("Login successful:", data);
+
+      // TODO: Handle success case
 
       // For demo purposes, set the user as authenticated
       localStorage.setItem("auth", "true");

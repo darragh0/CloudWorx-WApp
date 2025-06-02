@@ -1,23 +1,20 @@
 /**
  * @file server.js - Express server entry point.
  * @author darragh0
+ *
+ * @see http://gobbler.info:6174/docs
  */
 
+import bodyParser from "body-parser";
+import dotenv from "dotenv";
 import express from "express";
 import fs from "fs";
 import https from "https";
-import dotenv from "dotenv";
-import { verifyPw, verifyRecaptcha } from "./verify.js";
-import { valFieldFmt, Logger } from "./util.js";
-import {
-  genKEK,
-  hashPw,
-  genED25519Pair,
-  toBase64,
-} from "./encrypt.js";
+import { genED25519Pair, genKEK, hashPw, toBase64 } from "./encrypt.js";
+import { Logger, checkUserExists } from "./util.js";
+import { valEmail, valPassword, valReqFields, valUsername, verifyRecaptcha } from "./validate.js";
 
-import { join, resolve } from "path";
-import { dirname } from "path";
+import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
 /********************************************************
@@ -26,13 +23,9 @@ import { fileURLToPath } from "url";
 
 const logger = new Logger("cloudworx_web_client");
 
-for (const file of [
-  "./users.json",
-  "./certs/localhost-key.pem",
-  "./certs/localhost.pem",
-]) {
+for (const file of ["./certs/localhost-key.pem", "./certs/localhost.pem"]) {
   if (!fs.existsSync(file)) {
-    logger.crit(`Missing required file: \x1b[93m\`${file}\`\x1b[0m`);
+    logger.crit(`Missing required file: \`${file}\``);
     process.exit(1);
   }
 }
@@ -43,14 +36,8 @@ const PROJ_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PUB_DIR = join(PROJ_DIR, "pub");
 const HTML_DIR = join(PUB_DIR, "html");
 
-// Static files dir (for css, js, & images)
-app.use(express.static(PUB_DIR));
-// Parse incoming form data
+app.use(express.static(PUB_DIR, { maxAge: 31557600 }));
 app.use(express.urlencoded({ extended: true }));
-// Parse incoming JSON requests
-app.use(express.json());
-
-let all_users = JSON.parse(fs.readFileSync("./users.json", "utf8"));
 
 /********************************************************
  * Load environment variables from `.env`
@@ -58,16 +45,9 @@ let all_users = JSON.parse(fs.readFileSync("./users.json", "utf8"));
 
 dotenv.config({ path: resolve(PROJ_DIR, ".env") });
 
-for (const envVar of [
-  "RECAPTCHA_SECRET_KEY",
-  "ARGON_MEM_COST",
-  "ARGON_TIME_COST",
-  "ARGON_THREADS",
-  "NETWORK_HOST",
-  "NETWORK_PORT",
-]) {
+for (const envVar of ["RECAPTCHA_SECRET_KEY", "ARGON_MEM_COST", "ARGON_TIME_COST", "ARGON_THREADS", "NETWORK_HOST", "NETWORK_PORT"]) {
   if (!process.env[envVar]) {
-    logger.crit(`Missing env var: \x1b[93m\`${envVar}\`\x1b[0m`);
+    logger.crit(`Missing env var: \`${envVar}\``);
     process.exit(1);
   }
 }
@@ -78,6 +58,8 @@ const ARGON_TIME_COST = process.env.ARGON_TIME_COST;
 const ARGON_THREADS = process.env.ARGON_THREADS;
 const NETWORK_HOST = process.env.NETWORK_HOST;
 const NETWORK_PORT = process.env.NETWORK_PORT;
+
+const CHECK_USERS_ENDPOINT = `${NETWORK_HOST}:${NETWORK_PORT}/api/auth/users`;
 
 /********************************************************
  * Page routing
@@ -105,89 +87,49 @@ app.get("/", (_, res) => {
   res.sendFile(join(HTML_DIR, "index.html"));
 });
 
-// TODO: Send requests via sockets or API
 /********************************************************
  * Registration (Signup) API endpoint
  ********************************************************/
 
-/**
- * Check if username or email already exists via API call
- *
- * @param {string} username Username to check
- * @param {string} email Email to check
- * @returns {Promise<boolean>} True if user exists, false otherwise
- */
-async function checkUserExists(username, email) {
-  try {
-    const apiUrl = `${NETWORK_HOST}:${NETWORK_PORT}/api/auth/users`;
-    const response = await fetch(apiUrl);
-
-    if (!response.ok) {
-      logger.warn(`Failed to fetch users from API: ${response.status}`);
-      return false;
-    }
-
-    const data = await response.json();
-
-    if (!data.users || !Array.isArray(data.users)) {
-      logger.warn("Invalid response format from users API");
-      return false;
-    }
-
-    return data.users.some(
-      (user) => user.username === username || user.email === email
-    );
-  } catch (error) {
-    logger.warn(`Error checking user existence: ${error.message}`);
-    return false;
-  }
-}
-
-app.post("/register", async (req, res) => {
+app.post("/register", bodyParser.json(), async (req, res) => {
   const uname = req.body.username;
   const email = req.body.email;
   const pw = req.body.password;
-  const filepw = req.body.filePassword;
+  const fpw = req.body.filePassword;
   const capRes = req.body.recaptchaResponse;
 
   const fields = {
-    username: uname,
-    email: email,
-    password: pw,
-    filePassword: filepw,
-    recaptchaResponse: capRes,
+    username: [uname, "string"],
+    email: [email, "string"],
+    password: [pw, "string"],
+    filePassword: [fpw, "string"],
+    recaptchaResponse: [capRes, "string"],
   };
 
-  logger.debug("Validating request fields");
-  const errstr = valFieldFmt(fields);
+  const check = (logmsg, fn, ...args) => {
+    logger.debug(logmsg);
+    const emsg = fn(...args);
+    if (emsg.length > 0) {
+      logger.warn(emsg);
+      return res.status(400).send(emsg);
+    }
+    return null;
+  };
 
-  if (errstr.length > 0) {
-    logger.err(errstr);
-    return res.status(400).send(errstr);
-  }
+  let r;
+  if ((r = check("Validating format of request fields", valReqFields, fields))) return r;
+  if ((r = check("Validating email", valEmail, email))) return r;
+  if ((r = check("Validating username", valUsername, uname))) return r;
+  if ((r = check("Validating password", valPassword, pw))) return r;
+  if ((r = check("Validating file password", valPassword, fpw, "File Password"))) return r;
+  if ((r = check("Verifying reCAPTCHA response", verifyRecaptcha, capRes, RECAPTCHA_SECRET_KEY))) return r;
 
-  logger.debug("Validating email fmt");
-  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  if (!emailRegex.test(email)) {
-    const emsg = "Invalid email address format";
-    logger.err(emsg);
-    return res.status(400).send(emsg);
-  }
-
-  logger.debug("Checking if user already exists");
-  const userExists = await checkUserExists(uname, email);
-  if (userExists) {
-    const emsg = "Username or email already exists";
-    logger.err(emsg);
+  logger.debug(`Checking if user already exists (\`${uname}\`/\`${email})\``);
+  const exists = await checkUserExists(uname, CHECK_USERS_ENDPOINT, logger, email);
+  if (exists) {
+    const emsg = `User \`${uname}\`/\`${email}\` already exists: `;
+    logger.warn(emsg);
     return res.status(403).send(emsg);
-  }
-
-  logger.debug("Validating reCAPTCHA response");
-  const recaptchaResult = await verifyRecaptcha(capRes, RECAPTCHA_SECRET_KEY);
-  if (!recaptchaResult.success) {
-    const emsg = `reCAPTCHA verification failed: ${recaptchaResult.error}`;
-    logger.err(emsg);
-    return res.status(400).send(emsg);
   }
 
   logger.debug("Creating payload for backend");
@@ -195,88 +137,58 @@ app.post("/register", async (req, res) => {
     logger.debug("Generating ED25519 key pair");
     const { publicKey, privateKey } = genED25519Pair();
 
-    logger.debug("Hashing file password");
-    const pek = await hashPw(
-      filepw,
-      ARGON_MEM_COST,
-      ARGON_TIME_COST,
-      ARGON_THREADS
-    );
-
-    const salt = pek.split("$")[4] || "";
-
-    logger.debug("Hashing auth password");
-    const pw_hash = await hashPw(
-      pw,
-      ARGON_MEM_COST,
-      ARGON_TIME_COST,
-      ARGON_THREADS
-    );
+    logger.debug("Generating PDK");
+    const pek = await hashPw(fpw, ARGON_MEM_COST, ARGON_TIME_COST, ARGON_THREADS);
+    const pek_salt = pek.split("$")[4] || "";
 
     logger.debug("Generating KEK");
-    const { kek, iv_kek } = genKEK(pek);
+    const { encryptedKEK, iv } = genKEK(pek);
 
-    logger.debug("Creating payload");
+    logger.debug("Creating payload for registration API");
     const payload = {
       username: uname,
-      auth_password: pw_hash,
+      auth_password: pw,
       email: email,
       public_key: toBase64(publicKey),
-      iv_KEK: iv_kek,
-      salt: salt,
+      iv_KEK: toBase64(iv),
+      salt: toBase64(pek_salt),
       p: ARGON_THREADS,
       m: ARGON_MEM_COST,
       t: ARGON_TIME_COST,
-      encrypted_KEK: kek,
+      encrypted_KEK: toBase64(encryptedKEK),
     };
 
-    logger.debug(`Payload created:\n${JSON.stringify(payload, null, 2)}`);
+    const endpoint = `${NETWORK_HOST}:${NETWORK_PORT}/api/auth/register`;
+    logger.debug(`Sending registration request to API [POST \`${endpoint}\`]`);
+    logger.trace(`Sending payload:\n\`${JSON.stringify(payload, null, 2)}\``);
 
-    logger.debug("Sending registration request to API");
-    const apiUrl = `${NETWORK_HOST}:${NETWORK_PORT}/api/auth/register`;
-    const apiResponse = await fetch(apiUrl, {
-      method: 'POST',
+    const response = await fetch(endpoint, {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
     });
 
-    const responseData = await apiResponse.json();
+    const data = await response.json();
+    logger.trace(`Received response:\n\`${JSON.stringify(data, null, 2)}\``);
 
-    if (apiResponse.status !== 201) {
-      const errorMessage = responseData.message || responseData.error || 'Registration failed';
-      logger.err(`API registration failed: ${errorMessage}`);
-      throw new Error(errorMessage);
-    }
-
-    if (apiResponse.status !== 201) {
-      const errorMessage = responseData.message || responseData.error || 'Registration failed';
-      logger.err(`API registration failed: ${errorMessage}`);
-      return res.status(apiResponse.status).json({ error: errorMessage });
+    if (response.status !== 201) {
+      const emsg = data.message || data.error || "Registration failed";
+      logger.err(`API registration failed: ${emsg}`);
+      return res.status(response.status).send(emsg);
     }
 
     logger.debug("API registration successful");
-
-    all_users[uname] = {
-      email: email,
-      hash: pw_hash,
-      kek: kek,
-      iv_kek: iv_kek,
-      publicKey: publicKey,
-    };
-
-    fs.writeFileSync("./users.json", JSON.stringify(all_users, null, 2));
-
-    logger.debug(`User \x1b[1;96m${uname}\x1b[0m registered successfully`);
-    res.status(201).json({ 
+    logger.debug(`User \`${uname}\` registered successfully`);
+    res.status(201).json({
       privateKey: toBase64(privateKey),
-      token: responseData.token,
-      user_id: responseData.user_id
+      token: data.token,
+      user_id: data.user_id,
     });
   } catch (err) {
-    logger.err(err.message);
-    return res.status(500).send("Internal server error");
+    logger.err(`Registration error: ${err.message}`);
+    return res.status(500).send("Internal server error during registration");
   }
 });
 
@@ -284,61 +196,77 @@ app.post("/register", async (req, res) => {
  * Login API endpoint
  ********************************************************/
 
-app.post("/login", async (req, res) => {
+app.post("/login", bodyParser.json(), async (req, res) => {
   const uname = req.body.username;
   const pw = req.body.password;
 
-  if (!uname || !pw) {
-    return res.status(400).send("All fields are required: username & password");
+  const fields = {
+    username: [uname, "string"],
+    password: [pw, "string"],
+  };
+
+  const check = (logmsg, fn, ...args) => {
+    logger.debug(logmsg);
+    const emsg = fn(...args);
+    if (emsg.length > 0) {
+      logger.warn(emsg);
+      return res.status(400).send(emsg);
+    }
+    return null;
+  };
+
+  let r;
+  if ((r = check("Validating format of request fields", valReqFields, fields))) return r;
+  if ((r = check("Validating username", valUsername, uname))) return r;
+
+  // Validation for password format ???
+  // if ((res = check("Validating password", valPassword, pw))) return res;
+
+  logger.debug(`Checking if user exists (\`${uname}\`)`);
+  const exists = await checkUserExists(uname, CHECK_USERS_ENDPOINT, logger);
+  if (!exists) {
+    const emsg = `User \`${uname}\` does not exist`;
+    logger.warn(emsg);
+    return res.status(403).send(emsg);
   }
 
   try {
-    let userData = null;
-
-    if (uname in all_users) {
-      userData = all_users[uname];
-    }
-
-    if (!userData) {
-      return res.status(400).send("Invalid username or password");
-    }
-
-    const isValid = await verifyPw(pw, userData.hash);
-    if (!isValid) {
-      return res.status(400).send("Invalid username or password");
-    }
-
-    logger.debug("Sending login request to API");
-    const apiUrl = `${NETWORK_HOST}:${NETWORK_PORT}/api/auth/login`;
-    const apiPayload = {
+    logger.debug("Creating payload for login API");
+    const payload = {
       username: uname,
-      entered_auth_password: pw
+      entered_auth_password: pw,
     };
 
-    const apiResponse = await fetch(apiUrl, {
-      method: 'POST',
+    const endpoint = `${NETWORK_HOST}:${NETWORK_PORT}/api/auth/login`;
+    logger.debug(`Sending login request to API [POST \`${endpoint}\`]`);
+    logger.trace(`Sending payload:\n\`${JSON.stringify(payload, null, 2)}\``);
+
+    const response = await fetch(endpoint, {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify(apiPayload),
+      body: JSON.stringify(payload),
     });
 
-    const responseData = await apiResponse.json();
+    const data = await response.json();
+    logger.trace(`Received response:\n\`${JSON.stringify(data, null, 2)}\``);
 
-    if (apiResponse.status !== 200) {
-      const errorMessage = responseData.message || responseData.error || 'Login failed';
-      logger.err(`API login failed: ${errorMessage}`);
-      return res.status(apiResponse.status).json({ error: errorMessage });
+    if (response.status !== 200) {
+      const emsg = data.message || data.error || "Login failed";
+      logger.err(`API login failed: ${emsg}`);
+      return res.status(response.status).send(emsg);
     }
 
-    logger.debug(`User \x1b[1;96m${uname}\x1b[0m logged in successfully`);
-    res.status(200).json({ 
-      token: responseData.token,
-      user_id: responseData.user_id
+    logger.debug("API login successful");
+    logger.debug(`User \`${uname}\` logged in successfully`);
+    res.status(200).json({
+      token: data.token,
+      user_id: data.user_id,
     });
   } catch (err) {
     logger.err(`Login error: ${err.message}`);
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).send("Internal server error during login");
   }
 });
 
@@ -346,14 +274,36 @@ app.post("/login", async (req, res) => {
  * File Encryption API endpoint
  ********************************************************/
 
-app.post("/encrypt-file", async (req, res) => {
+app.post("/encrypt-file", bodyParser.json(), async (req, res) => {
+  const fname = req.body.fileName;
+  const ftype = req.body.fileType;
+  const fsize = req.body.fileSize;
+  const fcont = req.body.fileContent;
+  const fpw = req.body.filePw;
+
+  const fields = {
+    fileName: [fname, "string"],
+    fileType: [ftype, "string"],
+    fileSize: [fsize, "number"],
+    fileContent: [fcont, "string"],
+    filePw: [fpw, "string"],
+  };
+
+  const emsg = valReqFields(fields);
+  if (emsg.length > 0) {
+    logger.warn(emsg);
+    return res.status(400).send(emsg);
+  }
+
+  let r;
+  if ((r = check("Validating format of request fields", valReqFields, fields))) return r;
+
   try {
     const { fileName, fileType, fileSize, fileContent, filePw } = req.body;
 
     if (!fileName || !fileType || !fileSize || !fileContent || !filePw) {
       return res.status(400).json({
-        error:
-          "All fields are required: fileName, fileType, fileSize, fileContent, & filePw",
+        error: "All fields are required: fileName, fileType, fileSize, fileContent, & filePw",
       });
     }
 
@@ -414,9 +364,7 @@ const SERVER_OPTS = {
 };
 
 https.createServer(SERVER_OPTS, app).listen(PORT, () => {
-  console.log(
-    `\n\x1b[1;92mRunning on \x1b[1;96mhttps://localhost:${PORT}\x1b[0m`
-  );
+  logger.info(`Running on \`https://localhost:${PORT}\``);
 });
 
 // To run the server on HTTP instead of HTTPS:

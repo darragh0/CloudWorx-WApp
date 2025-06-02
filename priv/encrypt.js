@@ -1,27 +1,13 @@
 /**
  * @file encrypt.js - Server-side crypto utilities.
  * @author darragh0
- *
- * @typedef {object} ED25519KeyPair
- * @property {string} publicKey - Public key in PEM format
- * @property {string} privateKey - Private key in PEM format
- *
- * @typedef {object} KEKObj
- * @property {string} kek Encrypted KEK in base64
- * @property {string} iv_kek IV used for KEK encryption in base64
- *
- * @typedef {object} Argon2HashParams
- * @property {string} salt Salt
- * @property {int} p Parallelism factor (threads)
- * @property {int} m Memory cost
- * @property {int} t Time cost
  */
 
 import crypto from "crypto";
 import argon2 from "argon2";
 
 /**
- * Generate random IV.
+ * Generate random Initialization Vector (IV).
  *
  * @returns {Buffer} 12-byte IV
  */
@@ -56,7 +42,7 @@ function fromBase64(base64) {
  * Encrypt data with AES-GCM.
  *
  * @param {Buffer} key Key for encryption (32 bytes for AES-256)
- * @param {Buffer} iv 12 byte IV
+ * @param {Buffer} iv 12 byte Initialization Vector (IV)
  * @param {Buffer|string} data Data to encrypt
  * @returns {Buffer} Encrypted data
  */
@@ -75,8 +61,8 @@ function encryptData(key, iv, data) {
  * Decrypt data with AES-GCM.
  *
  * @param {Buffer} key Key for decryption (32 bytes for AES-256)
- * @param {Buffer} iv - 12-byte IV
- * @param {Buffer} data - Data to decrypt (includes auth tag)
+ * @param {Buffer} iv 12-byte Initialization Vector (IV)
+ * @param {Buffer} data Data to decrypt (includes auth tag)
  * @returns {Buffer} Decrypted data
  */
 function decryptData(key, iv, data) {
@@ -98,16 +84,11 @@ function decryptData(key, iv, data) {
  */
 function genKEK(pek) {
   const pekbuf = Buffer.from(pek);
-  const iv_kek = genIV();
+  const iv = genIV();
   const kek = crypto.randomBytes(32);
+  const encryptedKEK = encryptData(pekbuf.subarray(0, 32), iv, kek);
 
-  // Encrypt the KEK using the hashed PEK as the key
-  const encryptedKEK = encryptData(pekbuf.subarray(0, 32), iv_kek, kek);
-
-  return {
-    kek: toBase64(encryptedKEK),
-    iv_kek: toBase64(iv_kek),
-  };
+  return { encryptedKEK, iv };
 }
 
 /**
@@ -131,19 +112,6 @@ async function hashPw(pw, memCost, timeCost, threads) {
 }
 
 /**
- * Remove PEM header & footer from a key.
- *
- * @param {string} pemKey PEM formatted key
- * @returns {string} Key content without header & footer
- */
-function _stripPemHeaders(pemKey) {
-  return pemKey
-    .replace(/-----BEGIN [A-Z ]+-----\r?\n?/, "")
-    .replace(/\r?\n?-----END [A-Z ]+-----\r?\n?/, "")
-    .replace(/\r?\n/g, "");
-}
-
-/**
  * Generate Ed25519 keypair in PEM format.
  *
  * @returns {ED25519KeyPair} Object containing private and public keys in PEM format
@@ -160,19 +128,7 @@ function genED25519Pair() {
     },
   });
 
-  return {
-    publicKey: _stripPemHeaders(publicKey),
-    privateKey: _stripPemHeaders(privateKey),
-  };
+  return { publicKey, privateKey };
 }
 
-export {
-  genIV,
-  toBase64,
-  fromBase64,
-  encryptData,
-  decryptData,
-  genKEK,
-  hashPw,
-  genED25519Pair,
-};
+export { genIV, toBase64, fromBase64, encryptData, decryptData, genKEK, hashPw, genED25519Pair };
