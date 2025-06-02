@@ -320,13 +320,13 @@ def check_certs() -> None:
         install = yn_prompt("Install mkcert?", indent=2)
         if not install:
             perr(
-                "Please install mkcert to continue (https://github.com/FiloSottile/mkcert)"
+                "Please install mkcert to continue (https://github.com/FiloSottile/mkcert)",
             )
             sys.exit(3)
 
         if not install_mkcert():
             perr(
-                "Failed to install mkcert. Please install manually (https://github.com/FiloSottile/mkcert)"
+                "Failed to install mkcert. Please install manually (https://github.com/FiloSottile/mkcert)",
             )
             sys.exit(3)
     else:
@@ -337,10 +337,7 @@ def check_certs() -> None:
         perr("Failed to install local CA", indent=2)
         sys.exit(3)
 
-    both_files_exist = (
-        Path(certs_dir / "localhost-key.pem").exists()
-        and Path(certs_dir / "localhost.pem").exists()
-    )
+    both_files_exist = Path(certs_dir / "localhost-key.pem").exists() and Path(certs_dir / "localhost.pem").exists()
     if not both_files_exist:
         pinfo("Generating certificates", indent=2)
         if not run_cmd(
@@ -374,6 +371,19 @@ def check_nodejs() -> None:
         sys.exit(4)
 
 
+def compile_scss() -> None:
+    """Compile SCSS files to CSS"""
+
+    psec("SCSS Compilation")
+
+    pinfo("Compiling SCSS files", indent=2)
+    if not run_cmd("npm run compile-scss", indent=4):
+        perr("Failed to compile SCSS files", indent=2)
+        sys.exit(5)
+
+    psuccess("SCSS files compiled successfully", indent=2)
+
+
 def main() -> None:
     Color.check_platform()
 
@@ -393,6 +403,7 @@ def main() -> None:
     check_env()
     check_certs()
     check_nodejs()
+    compile_scss()
 
     print()
     pinfo("Run `npm run serve` to start the server")

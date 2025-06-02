@@ -54,6 +54,14 @@ mkdir certs && mkcert -key-file certs/localhost-key.pem -cert-file certs/localho
 npm install
 ```
 
+#### 3. Compile SCSS/SASS Files
+```sh
+npm run compile-sass
+```
+
+> [!NOTE]
+> Alternativley, you can use `npm run watch-sass` to recompile on updates.
+
 ## Project File Structure
 
 After following the setup steps, the project tree should look like the following (excluding some files/folders). Only files within the `pub` folder are visible to the end user.

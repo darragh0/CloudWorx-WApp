@@ -5,11 +5,13 @@
   "main": "priv/server.js",
   "type": "module",
   "scripts": {
+    "compile-sass": "sass scss:pub/css",
+    "watch-sass": "sass --watch scss:pub/css",
     "start": "npm run serve",
     "test": "echo \"Error: no test specified\" && exit 1",
     "serve": "node priv/server.js",
     "dev": "nodemon priv/server.js",
-    "clean": "rimraf package-lock.json node_modules"
+    "clean": "rimraf node_modules"
   },
   "repository": {
     "type": "git",
@@ -25,7 +27,8 @@
     "argon2": "^0.43.0",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "sass": "^1.89.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.10",
