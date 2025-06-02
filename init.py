@@ -377,7 +377,7 @@ def compile_scss() -> None:
     psec("SCSS Compilation")
 
     pinfo("Compiling SCSS files", indent=2)
-    if not run_cmd("npm run compile-scss", indent=4):
+    if not run_cmd("npm run compile-sass", indent=4):
         perr("Failed to compile SCSS files", indent=2)
         sys.exit(5)
 
