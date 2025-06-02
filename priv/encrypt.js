@@ -175,5 +175,4 @@ export {
   genKEK,
   hashPw,
   genED25519Pair,
-  extractHashParams,
 };
