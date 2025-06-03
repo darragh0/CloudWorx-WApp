@@ -9,10 +9,12 @@ import argon2 from "argon2";
 /**
  * Generate random Initialization Vector (IV).
  *
+ * @param {string} username Username to create IV
  * @returns {Buffer} 12-byte IV
  */
-function genIV() {
-  return crypto.randomBytes(12);
+function genIV(username) {
+  const hash = crypto.createHash("sha256").update(username).digest();
+  return hash.subarray(0, 12);
 }
 
 /**
@@ -80,11 +82,12 @@ function decryptData(key, iv, data) {
  * Generate KEK from PEK.
  *
  * @param {string} pek PEK to derive KEK from
+ * @param {string} username Username to create IV
  * @returns {KEKObj} Object containing KEK & IV used
  */
-function genKEK(pek) {
+function genKEK(pek, username) {
   const pekbuf = Buffer.from(pek);
-  const iv = genIV();
+  const iv = genIV(username);
   const kek = crypto.randomBytes(32);
   const encryptedKEK = encryptData(pekbuf.subarray(0, 32), iv, kek);
 

@@ -375,7 +375,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const pwemsg = valPassword(pw);
       if (pwemsg) {
-        isValid = showErr("signup-password-error", pwemsg.message);
+        isValid = showErr("signup-password-error", pwemsg);
       }
 
       if (!confirmPw) {
@@ -464,7 +464,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (check("Username", "signup-username-error")) return;
         if (check("Password", "signup-password-error")) return;
 
-        showErr("recaptcha-error", emsg);
+        showErr("recaptcha-error", emsg, true);
         // Reset reCAPTCHA
         if (window.grecaptcha) {
           grecaptcha.reset();

@@ -23,6 +23,7 @@ ENV_KEYS: set[str] = {
     "ARGON_MEM_COST",
     "ARGON_TIME_COST",
     "ARGON_THREADS",
+    "API_URL",
 }
 
 

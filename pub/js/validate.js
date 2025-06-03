@@ -121,6 +121,8 @@ function valPassword(pw, key = "Password") {
     }
   }
 
+  if (errmsg) errmsg = errmsg.replace(/,(?!.*,)/, " &");
+
   return errmsg;
 }
 

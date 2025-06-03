@@ -1,4 +1,12 @@
+# Local Dependencies
 node_modules/
+
+# Certificates
 certs/
+
+# Compiled (Generated) CSS (from SCSS) 
 pub/css/
+
+# Logs & Sensitive Env Vars
+logs/
 .env

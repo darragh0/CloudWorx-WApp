@@ -2,64 +2,87 @@
  * @file server.js - Express server entry point.
  * @author darragh0
  *
- * @see http://gobbler.info:6174/docs
+ * @see https://networkninjas.gobbler.info/docs
  */
 
 import bodyParser from "body-parser";
-import dotenv from "dotenv";
 import express from "express";
 import fs from "fs";
 import https from "https";
 import { genED25519Pair, genKEK, hashPw, toBase64 } from "./encrypt.js";
-import { Logger, checkUserExists } from "./util.js";
+import { Logger, checkUserExists, parseDotEnv, checkFilesExist } from "./util.js";
 import { valEmail, valPassword, valReqFields, valUsername, verifyRecaptcha } from "./validate.js";
 
-import { dirname, join, resolve } from "path";
+import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
 /********************************************************
- * Initialize Express app & Middleware
+ * Initialize Logging & Validate Paths
  ********************************************************/
 
-const logger = new Logger("cloudworx_web_client");
+const PROJ_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-for (const file of ["./certs/localhost-key.pem", "./certs/localhost.pem"]) {
-  if (!fs.existsSync(file)) {
-    logger.crit(`Missing required file: \`${file}\``);
-    process.exit(1);
+const logger = new Logger("CloudWorxWeb.Console", { name: null });
+const fLogger = new Logger(
+  "CloudWorxWeb.File",
+  {
+    name: null,
+    date: "plain",
+    level: "plain",
+    dateFmt: "iso",
+    jsonl: true,
+    colorLvl: false,
+    out: join(PROJ_DIR, "logs", "server.log"),
+  },
+  50
+);
+
+logger.link(fLogger);
+logger.info("Running `server.js`");
+
+const cleanup = (exitCode) => {
+  fLogger.flushToFile();
+  if (exitCode) {
+    process.exit(exitCode);
   }
-}
+};
+
+process.on("SIGINT", () => cleanup(130));
+process.on("SIGTERM", () => cleanup(0));
+process.on("uncaughtException", (err) => {
+  logger.err(`Uncaught Exception: ${err.message}`);
+  cleanup();
+  throw err;
+});
+
+const REQ_PATHS = ["pub", "pub/html", "./.env", "./certs/localhost-key.pem", "./certs/localhost.pem"];
+checkFilesExist(PROJ_DIR, logger, ...REQ_PATHS);
+
+/********************************************************
+ * Load & Validate Env Vars (from `.env`)
+ ********************************************************/
+
+const REQ_ENV_KEYS = {
+  RECAPTCHA_SECRET_KEY: "string",
+  API_URL: "string",
+  ARGON_MEM_COST: "uint",
+  ARGON_TIME_COST: "uint",
+  ARGON_THREADS: "uint",
+};
+
+const ENV = parseDotEnv(PROJ_DIR, logger, REQ_ENV_KEYS);
+const CHECK_USERS_ENDPOINT = `${ENV.api_url}/api/auth/users`;
+
+/********************************************************
+ * Initialize Express App & Middleware
+ ********************************************************/
 
 const app = express();
-
-const PROJ_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PUB_DIR = join(PROJ_DIR, "pub");
 const HTML_DIR = join(PUB_DIR, "html");
 
 app.use(express.static(PUB_DIR, { maxAge: 31557600 }));
 app.use(express.urlencoded({ extended: true }));
-
-/********************************************************
- * Load environment variables from `.env`
- ********************************************************/
-
-dotenv.config({ path: resolve(PROJ_DIR, ".env") });
-
-for (const envVar of ["RECAPTCHA_SECRET_KEY", "ARGON_MEM_COST", "ARGON_TIME_COST", "ARGON_THREADS", "NETWORK_HOST", "NETWORK_PORT"]) {
-  if (!process.env[envVar]) {
-    logger.crit(`Missing env var: \`${envVar}\``);
-    process.exit(1);
-  }
-}
-
-const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
-const ARGON_MEM_COST = process.env.ARGON_MEM_COST;
-const ARGON_TIME_COST = process.env.ARGON_TIME_COST;
-const ARGON_THREADS = process.env.ARGON_THREADS;
-const NETWORK_HOST = process.env.NETWORK_HOST;
-const NETWORK_PORT = process.env.NETWORK_PORT;
-
-const CHECK_USERS_ENDPOINT = `${NETWORK_HOST}:${NETWORK_PORT}/api/auth/users`;
 
 /********************************************************
  * Page routing
@@ -122,12 +145,12 @@ app.post("/register", bodyParser.json(), async (req, res) => {
   if ((r = check("Validating username", valUsername, uname))) return r;
   if ((r = check("Validating password", valPassword, pw))) return r;
   if ((r = check("Validating file password", valPassword, fpw, "File Password"))) return r;
-  if ((r = check("Verifying reCAPTCHA response", verifyRecaptcha, capRes, RECAPTCHA_SECRET_KEY))) return r;
+  if ((r = check("Verifying reCAPTCHA response", verifyRecaptcha, capRes, ENV.recaptcha_secret_key))) return r;
 
   logger.debug(`Checking if user already exists (\`${uname}\`/\`${email})\``);
   const exists = await checkUserExists(uname, CHECK_USERS_ENDPOINT, logger, email);
   if (exists) {
-    const emsg = `User \`${uname}\`/\`${email}\` already exists: `;
+    const emsg = `Username or email already registered: \`${uname}\`/\`${email}\``;
     logger.warn(emsg);
     return res.status(403).send(emsg);
   }
@@ -138,11 +161,11 @@ app.post("/register", bodyParser.json(), async (req, res) => {
     const { publicKey, privateKey } = genED25519Pair();
 
     logger.debug("Generating PDK");
-    const pek = await hashPw(fpw, ARGON_MEM_COST, ARGON_TIME_COST, ARGON_THREADS);
+    const pek = await hashPw(fpw, ENV.argon_mem_cost, ENV.argon_time_cost, ENV.argon_threads);
     const pek_salt = pek.split("$")[4] || "";
 
     logger.debug("Generating KEK");
-    const { encryptedKEK, iv } = genKEK(pek);
+    const { encryptedKEK, iv } = genKEK(pek, uname);
 
     logger.debug("Creating payload for registration API");
     const payload = {
@@ -152,13 +175,13 @@ app.post("/register", bodyParser.json(), async (req, res) => {
       public_key: toBase64(publicKey),
       iv_KEK: toBase64(iv),
       salt: toBase64(pek_salt),
-      p: ARGON_THREADS,
-      m: ARGON_MEM_COST,
-      t: ARGON_TIME_COST,
+      p: ENV.argon_threads,
+      m: ENV.argon_mem_cost,
+      t: ENV.argon_time_cost,
       encrypted_KEK: toBase64(encryptedKEK),
     };
 
-    const endpoint = `${NETWORK_HOST}:${NETWORK_PORT}/api/auth/register`;
+    const endpoint = `${ENV.api_url}/api/auth/register`;
     logger.debug(`Sending registration request to API [POST \`${endpoint}\`]`);
     logger.trace(`Sending payload:\n\`${JSON.stringify(payload, null, 2)}\``);
 
@@ -237,7 +260,7 @@ app.post("/login", bodyParser.json(), async (req, res) => {
       entered_auth_password: pw,
     };
 
-    const endpoint = `${NETWORK_HOST}:${NETWORK_PORT}/api/auth/login`;
+    const endpoint = `${ENV.api_url}/api/auth/login`;
     logger.debug(`Sending login request to API [POST \`${endpoint}\`]`);
     logger.trace(`Sending payload:\n\`${JSON.stringify(payload, null, 2)}\``);
 
@@ -284,7 +307,7 @@ app.post("/encrypt-file", bodyParser.json(), async (req, res) => {
   const fields = {
     fileName: [fname, "string"],
     fileType: [ftype, "string"],
-    fileSize: [fsize, "number"],
+    fileSize: [fsize, "uint"],
     fileContent: [fcont, "string"],
     filePw: [fpw, "string"],
   };
@@ -295,18 +318,15 @@ app.post("/encrypt-file", bodyParser.json(), async (req, res) => {
     return res.status(400).send(emsg);
   }
 
-  let r;
-  if ((r = check("Validating format of request fields", valReqFields, fields))) return r;
+  // Steps for encrypting a file:
+  // 1. salt -> from GET /api/auth/{user-id}
+  // 2. pdk -> Hash file password with Argon2id with salt
+  // 3. iv_file -> Generate 12-byte IV with hash(user-id + file name + smth random)
+  // 4. dek -> 32 random bytes
+  // 6. encrypted_file -> Encrypt file with DEK and iv_file
+  // 7.
 
   try {
-    const { fileName, fileType, fileSize, fileContent, filePw } = req.body;
-
-    if (!fileName || !fileType || !fileSize || !fileContent || !filePw) {
-      return res.status(400).json({
-        error: "All fields are required: fileName, fileType, fileSize, fileContent, & filePw",
-      });
-    }
-
     // Step 1: Generate a Data Encryption Key (DEK) for the file
     const dek = crypto.randomBytes(32); // 256-bit key
 
@@ -324,9 +344,9 @@ app.post("/encrypt-file", bodyParser.json(), async (req, res) => {
 
     // Step 6: Generate KEK from user's PEK
     const argonOptions = {
-      memCost: ARGON_MEM_COST,
-      timeCost: ARGON_TIME_COST,
-      threads: ARGON_THREADS,
+      memCost: ENV.argon_mem_cost,
+      timeCost: ENV.argon_time_cost,
+      threads: ENV.argon_threads,
     };
 
     const { kek, iv_kek, raw_kek } = await genKEK(pek, argonOptions);

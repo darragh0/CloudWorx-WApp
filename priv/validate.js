@@ -52,7 +52,7 @@ function valReqFields(fields) {
     if (!value) {
       missing.push(`\`${key}\``);
     } else if (typeof value !== vtype) {
-      if (vtype === "number" && !(Number.isInteger(value) || value <= 0)) {
+      if (vtype === "uint" && !(Number.isInteger(value) || value <= 0)) {
         nonUint.push(`\`${key}\``);
       }
       nonString.push(`\`${key}\``);

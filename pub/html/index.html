@@ -6,21 +6,14 @@
     <link rel="icon" type="image/x-icon" href="img/ico/favicon.ico" />
     <title>CloudWorx</title>
     <link rel="stylesheet" href="css/index.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <script src="https://www.google.com/recaptcha/api.js"></script>
   </head>
   <body>
     <nav class="nav">
       <div class="nav__left">
         <a href="#" class="nav__link">
-          <img
-            src="img/webp/cloudworx-logo.webp"
-            alt="CloudWorx Logo"
-            class="logo"
-          />
+          <img src="img/webp/cloudworx-logo.webp" alt="CloudWorx Logo" class="logo" />
           <div class="app-name">CloudWorx</div>
         </a>
       </div>
@@ -34,9 +27,7 @@
           <i class="fas fa-moon"></i>
         </button>
         <a href="#" class="nav__link" id="sign-in-link">Sign in</a>
-        <a href="#" class="btn btn--primary" id="nav-get-started"
-          >Get started</a
-        >
+        <a href="#" class="btn btn--primary" id="nav-get-started">Get started</a>
       </div>
     </nav>
 
@@ -44,8 +35,7 @@
       <h1>Secure File Sharing Platform</h1>
       <p>Your reliable solution for secure file sharing and collaboration.</p>
       <a href="#" class="btn btn--primary btn--large" id="hero-get-started"
-        >Get Started &nbsp;&nbsp;<i class="fa-solid fa-arrow-right"></i
-        >&nbsp;</a
+        >Get Started &nbsp;&nbsp;<i class="fa-solid fa-arrow-right"></i>&nbsp;</a
       >
     </main>
 
@@ -59,48 +49,22 @@
         <form class="modal__form" id="signup-form">
           <div class="form__group">
             <label for="signup-username" class="form__label">Username</label>
-            <input
-              type="text"
-              id="signup-username"
-              name="signup-username"
-              class="form__input"
-              required
-              autocomplete="username"
-            />
+            <input type="text" id="signup-username" name="signup-username" class="form__input" required autocomplete="username" />
             <div class="form__error" id="signup-username-error"></div>
           </div>
           <div class="form__group">
             <label for="signup-email" class="form__label">Email</label>
-            <input
-              type="email"
-              id="signup-email"
-              name="signup-email"
-              class="form__input"
-              required
-              autocomplete="email"
-            />
+            <input type="email" id="signup-email" name="signup-email" class="form__input" required autocomplete="email" />
             <div class="form__error" id="signup-email-error"></div>
           </div>
           <div class="form__group">
             <label for="signup-password" class="form__label">Password</label>
-            <input
-              type="password"
-              id="signup-password"
-              name="signup-password"
-              class="form__input"
-              required
-              autocomplete="new-password"
-            />
-            <i
-              class="fas fa-eye form__password-toggle"
-              data-target="signup-password"
-            ></i>
+            <input type="password" id="signup-password" name="signup-password" class="form__input" required autocomplete="new-password" />
+            <i class="fas fa-eye form__password-toggle" data-target="signup-password"></i>
             <div class="form__error" id="signup-password-error"></div>
           </div>
           <div class="form__group">
-            <label for="signup-confirm-password" class="form__label"
-              >Confirm Password</label
-            >
+            <label for="signup-confirm-password" class="form__label">Confirm Password</label>
             <input
               type="password"
               id="signup-confirm-password"
@@ -109,21 +73,13 @@
               required
               autocomplete="new-password"
             />
-            <i
-              class="fas fa-eye form__password-toggle"
-              data-target="signup-confirm-password"
-            ></i>
+            <i class="fas fa-eye form__password-toggle" data-target="signup-confirm-password"></i>
             <div class="form__error" id="signup-confirm-password-error"></div>
           </div>
-          <div
-            class="g-recaptcha"
-            data-sitekey="6Lco50grAAAAAJB7olRjGyKDCAj2XlMySUTGLOiZ"
-          ></div>
+          <div class="g-recaptcha" data-sitekey="6Lco50grAAAAAJB7olRjGyKDCAj2XlMySUTGLOiZ"></div>
           <div class="form__error" id="recaptcha-error"></div>
 
-          <button type="submit" id="sign-up-submit" class="form__submit">
-            Create Account
-          </button>
+          <button type="submit" id="sign-up-submit" class="form__submit">Create Account</button>
         </form>
         <div class="modal__footer">
           Already have an account?
@@ -142,14 +98,7 @@
         <form class="modal__form" id="signin-form">
           <div class="form__group">
             <label for="signin-username" class="form__label">Username</label>
-            <input
-              type="text"
-              id="signin-username"
-              name="signin-username"
-              class="form__input"
-              required
-              autocomplete="username"
-            />
+            <input type="text" id="signin-username" name="signin-username" class="form__input" required autocomplete="username" />
             <div class="form__error" id="signin-username-error"></div>
           </div>
           <div class="form__group">
@@ -162,15 +111,10 @@
               required
               autocomplete="current-password"
             />
-            <i
-              class="fas fa-eye form__password-toggle"
-              data-target="signin-password"
-            ></i>
+            <i class="fas fa-eye form__password-toggle" data-target="signin-password"></i>
             <div class="form__error" id="signin-password-error"></div>
           </div>
-          <button type="submit" id="sign-in-submit" class="form__submit">
-            Sign In
-          </button>
+          <button type="submit" id="sign-in-submit" class="form__submit">Sign In</button>
         </form>
         <div class="modal__footer">
           Don't have an account?
@@ -188,24 +132,12 @@
         <form class="modal__form" id="file-password-form">
           <div class="form__group">
             <label for="file-password" class="form__label">File Password</label>
-            <input
-              type="password"
-              id="file-password"
-              name="file-password"
-              class="form__input"
-              required
-              autocomplete="new-password"
-            />
-            <i
-              class="fas fa-eye form__password-toggle"
-              data-target="file-password"
-            ></i>
+            <input type="password" id="file-password" name="file-password" class="form__input" required autocomplete="new-password" />
+            <i class="fas fa-eye form__password-toggle" data-target="file-password"></i>
             <div class="form__error" id="file-password-error"></div>
           </div>
           <div class="form__group">
-            <label for="file-confirm-password" class="form__label"
-              >Confirm Password</label
-            >
+            <label for="file-confirm-password" class="form__label">Confirm Password</label>
             <input
               type="password"
               id="file-confirm-password"
@@ -214,21 +146,13 @@
               required
               autocomplete="new-password"
             />
-            <i
-              class="fas fa-eye form__password-toggle"
-              data-target="file-confirm-password"
-            ></i>
+            <i class="fas fa-eye form__password-toggle" data-target="file-confirm-password"></i>
             <div class="form__error" id="file-confirm-password-error"></div>
           </div>
           <div class="form__info">
-            <p>
-              Your file password is used to encrypt and decrypt your files.
-              Don't forget your password — it can't be recovered.
-            </p>
+            <p>Your file password is used to encrypt and decrypt your files. Don't forget your password — it can't be recovered.</p>
           </div>
-          <button type="submit" id="file-password-submit" class="form__submit">
-            Create Password
-          </button>
+          <button type="submit" id="file-password-submit" class="form__submit">Create Password</button>
         </form>
       </div>
     </div>
@@ -243,38 +167,22 @@
         <div class="private-key-display">
           <div class="form__info">
             <p>
-              <strong>Important:</strong> Your private key is required to
-              decrypt files shared with you. Please download and store it
+              <strong>Important:</strong> Your private key is required to decrypt files shared with you. Please download and store it
               securely.
             </p>
             <br />
             <p>
-              <em>
-                You will not be able to access this key again once you close
-                this window.
-              </em>
+              <em> You will not be able to access this key again once you close this window. </em>
             </p>
           </div>
           <div class="private-key-container">
-            <textarea
-              id="private-key-text"
-              class="private-key-textarea"
-              readonly
-            ></textarea>
+            <textarea id="private-key-text" class="private-key-textarea" readonly></textarea>
           </div>
           <div class="private-key-actions">
-            <button
-              type="button"
-              id="download-private-key"
-              class="form__submit form__submit--primary"
-            >
+            <button type="button" id="download-private-key" class="form__submit form__submit--primary">
               <i class="fas fa-download"></i> Download Private Key
             </button>
-            <button
-              type="button"
-              id="continue-to-files"
-              class="form__submit form__submit--secondary"
-            >
+            <button type="button" id="continue-to-files" class="form__submit form__submit--secondary">
               Continue to Files <i class="fas fa-arrow-right"></i>
             </button>
           </div>

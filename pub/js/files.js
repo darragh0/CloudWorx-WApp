@@ -18,17 +18,13 @@ const HTML_TEMPLATES = {
     </tr>
   `,
   shareIcon: '<i class="fas fa-share-alt shared-icon"></i>',
-  sharedWithYouBadge:
-    '<span class="file-badge file-badge--shared">Shared with you</span>',
-  sharedByYouBadge:
-    '<span class="file-badge file-badge--owned">Shared by you</span>',
+  sharedWithYouBadge: '<span class="file-badge file-badge--shared">Shared with you</span>',
+  sharedByYouBadge: '<span class="file-badge file-badge--owned">Shared by you</span>',
   ownedFileActions: (file) => `
     <button class="download-btn tooltip" title="Download" data-tooltip="Download file">
       <i class="fas fa-download"></i>
     </button>
-    <button class="share-btn tooltip" title="${
-      file.shared ? "Manage Sharing" : "Share"
-    }" data-tooltip="${
+    <button class="share-btn tooltip" title="${file.shared ? "Manage Sharing" : "Share"}" data-tooltip="${
     file.shared ? "Manage who has access" : "Share with others"
   }">
       <i class="fas fa-share-alt"></i>
@@ -215,9 +211,7 @@ document.addEventListener("DOMContentLoaded", () => {
       curFilter = btn.getAttribute("data-filter");
 
       // Set to active filter
-      filterButtons.forEach((btn) =>
-        btn.classList.remove("filter-btn--active")
-      );
+      filterButtons.forEach((btn) => btn.classList.remove("filter-btn--active"));
       btn.classList.add("filter-btn--active");
 
       displayFiles();
@@ -292,11 +286,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <td>${file.fmtDate()}</td>
         <td>
           <div class="file-actions">
-            ${
-              isOwned
-                ? HTML_TEMPLATES.ownedFileActions(file)
-                : HTML_TEMPLATES.sharedFileActions
-            }
+            ${isOwned ? HTML_TEMPLATES.ownedFileActions(file) : HTML_TEMPLATES.sharedFileActions}
           </div>
         </td>
       </tr>
@@ -451,9 +441,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (file.isOwned() && file.shared) {
       document.querySelectorAll(".revoke-btn").forEach((btn) => {
         btn.addEventListener("click", function () {
-          const username = this.parentElement
-            .querySelector(".username")
-            .textContent.trim();
+          const username = this.parentElement.querySelector(".username").textContent.trim();
           revokeAccess(username);
         });
       });
@@ -480,9 +468,7 @@ document.addEventListener("DOMContentLoaded", () => {
         `This file is shared with other users. Deleting it will revoke access for all users. Are you sure you want to delete "${file.name}"?`,
         function () {
           // Get the file row element
-          const fileRow = document.querySelector(
-            `tr[data-file-index="${fileIndex}"]`
-          );
+          const fileRow = document.querySelector(`tr[data-file-index="${fileIndex}"]`);
 
           // Add a fade-out animation
           if (fileRow) {
@@ -499,53 +485,42 @@ document.addEventListener("DOMContentLoaded", () => {
             displayFiles();
 
             // Show notification
-            notify(
-              `"${file.name}" has been permanently deleted and all shared access has been revoked.`,
-              "success"
-            );
+            notify(`"${file.name}" has been permanently deleted and all shared access has been revoked.`, "success");
           }, 500); // Match transition duration
         }
       );
     } else {
       // Standard confirmation for non-shared files
-      showCustomConfirm(
-        `Are you sure you want to delete "${file.name}"?`,
-        function () {
-          // Get the file row element
-          const fileRow = document.querySelector(
-            `tr[data-file-index="${fileIndex}"]`
-          );
+      showCustomConfirm(`Are you sure you want to delete "${file.name}"?`, function () {
+        // Get the file row element
+        const fileRow = document.querySelector(`tr[data-file-index="${fileIndex}"]`);
 
-          // Add a fade-out animation
-          if (fileRow) {
-            fileRow.style.transition = "opacity 0.5s, transform 0.5s";
-            fileRow.style.opacity = "0";
-            fileRow.style.transform = "translateX(20px)";
-          }
-
-          // Wait for animation to complete before removing from data
-          setTimeout(() => {
-            // TODO: Delete file from database
-            ALL_FILES.splice(fileIndex, 1);
-            displayFiles();
-
-            // Show notification
-            notify(`"${file.name}" has been permanently deleted.`, "success");
-          }, 500); // Match transition duration
+        // Add a fade-out animation
+        if (fileRow) {
+          fileRow.style.transition = "opacity 0.5s, transform 0.5s";
+          fileRow.style.opacity = "0";
+          fileRow.style.transform = "translateX(20px)";
         }
-      );
+
+        // Wait for animation to complete before removing from data
+        setTimeout(() => {
+          // TODO: Delete file from database
+          ALL_FILES.splice(fileIndex, 1);
+          displayFiles();
+
+          // Show notification
+          notify(`"${file.name}" has been permanently deleted.`, "success");
+        }, 500); // Match transition duration
+      });
     }
   }
 
   function revokeAccess(username) {
-    showCustomConfirm(
-      `Are you sure you want to revoke access for ${username}?`,
-      () => {
-        // TODO: Update file access permissions
-        notify(`Access revoked for ${username}`, "success");
-        shareModal.classList.remove("modal--active");
-      }
-    );
+    showCustomConfirm(`Are you sure you want to revoke access for ${username}?`, () => {
+      // TODO: Update file access permissions
+      notify(`Access revoked for ${username}`, "success");
+      shareModal.classList.remove("modal--active");
+    });
   }
 
   /********************************************************
@@ -563,9 +538,7 @@ document.addEventListener("DOMContentLoaded", () => {
     notification.className = `notification notification--${type}`;
 
     // Get icon based on type
-    const icon =
-      HTML_TEMPLATES.notificationIcons[type] ||
-      HTML_TEMPLATES.notificationIcons.info;
+    const icon = HTML_TEMPLATES.notificationIcons[type] || HTML_TEMPLATES.notificationIcons.info;
 
     notification.innerHTML = `
       <i class="fas fa-${icon}"></i>
@@ -601,9 +574,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!username) {
       fromId("share-username-error").textContent = "Please enter a username";
-      document
-        .getElementById("share-username-error")
-        .classList.add("form__error--visible");
+      document.getElementById("share-username-error").classList.add("form__error--visible");
       return;
     }
 
@@ -654,10 +625,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Simulate download with decryption
         setTimeout(() => {
-          notify(
-            `"${fileToDownload.name}" downloaded and decrypted successfully.`,
-            "success"
-          );
+          notify(`"${fileToDownload.name}" downloaded and decrypted successfully.`, "success");
           fileToDownload = null;
         }, 1500);
       }
@@ -718,13 +686,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // TODO: send to backend via fetch
 
         // Create a new File instance
-        const newFile = new FileObj(
-          file.name,
-          "me",
-          file.size,
-          new Date(),
-          false
-        );
+        const newFile = new FileObj(file.name, "me", file.size, new Date(), false);
 
         ALL_FILES.unshift(newFile);
 
@@ -738,14 +700,10 @@ document.addEventListener("DOMContentLoaded", () => {
         displayFiles();
 
         // Show notification
-        notify(
-          `"${newFile.name}" has been encrypted and uploaded successfully.`,
-          "success"
-        );
+        notify(`"${newFile.name}" has been encrypted and uploaded successfully.`, "success");
       } catch (error) {
         console.error("Error during file encryption:", error);
-        filepwError.textContent =
-          "Failed to encrypt file: " + (error.message || "Unknown error");
+        filepwError.textContent = "Failed to encrypt file: " + (error.message || "Unknown error");
         filepwError.classList.add("form__error--visible");
       } finally {
         // Hide uploading indicator
