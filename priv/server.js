@@ -396,20 +396,20 @@ app.post("/encrypt-file", upload.single("file"), async (req, res) => {
 
   const form = new FormData();
   const blob = new Blob([encryptedFile], { type: ftype });
-  form.append("file", blob, {
+  form.append("encrypted_file", blob, {
     filename: fname,
     contentType: ftype,
   });
 
   const headers = {
-    ...form.getHeaders(),
+    ...form.headers,
     Authorization: `Bearer ${token}`,
     "X-File-Name": fname,
-    "X-IV-File": toBase64(ivFile),
+    "X-IV-File": ivFile.toString("utf8"),
     "X-File-Type": ftype,
-    "X-File-Size": fsize.toString(),
-    "X-IV-DEK": toBase64(ivDEK),
-    "X-Encrypted-DEK": toBase64(encryptedDEK),
+    "X-File-Size": fsize.toString("utf8"),
+    "X-IV-DEK": ivDEK.toString("utf8"),
+    "X-Encrypted-DEK": encryptedDEK.toString("utf8"),
   };
 
   try {
