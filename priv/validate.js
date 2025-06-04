@@ -3,6 +3,8 @@
  * @author darragh0
  */
 
+import { Logger } from "./util.js";
+
 /** @private */
 const _MAX_LEN = 255;
 
@@ -40,24 +42,29 @@ const _REGEX = {
  * Check fields exist, are given types, & non-empty.
  *
  * @param {RequiredFields} fields Map of fields to validate (key: [value, type])
+ * @param {Logger} [logger=null] Logger instance for logging verbose output
  * @returns {string} Error message or empty string if valid
  */
-function valReqFields(fields) {
+function valReqFields(fields, logger = null) {
   let missing = [];
-  let nonString = [];
   let nonUint = [];
+  let nonBuf = [];
+  let nonStr = [];
   let empty = [];
 
   for (const [key, [value, vtype]] of Object.entries(fields)) {
     if (!value) {
       missing.push(`\`${key}\``);
-    } else if (typeof value !== vtype) {
-      if (vtype === "uint" && !(Number.isInteger(value) || value <= 0)) {
-        nonUint.push(`\`${key}\``);
-      }
-      nonString.push(`\`${key}\``);
-    } else if (value.trim() === "") {
+    } else if (vtype === "uint" && !(Number.isInteger(value) && value >= 0)) {
+      nonUint.push(`\`${key}\``);
+    } else if (vtype === "buffer" && !Buffer.isBuffer(value)) {
+      nonBuf.push(`\`${key}\``);
+    } else if (vtype === "string" && typeof value !== "string") {
+      nonStr.push(`\`${key}\``);
+    } else if (vtype === "string" && value.trim() === "") {
       empty.push(`\`${key}\``);
+    } else if (logger) {
+      logger.trace(`Field is valid: \`${key}\`=\`${value}\` (type=\`${vtype}\`)`);
     }
   }
 
@@ -66,12 +73,16 @@ function valReqFields(fields) {
     errArr.push(`missing field(s): ${missing.join(", ")}`);
   }
 
-  if (nonString.length > 0) {
-    errArr.push(`field(s) must be a string: ${nonString.join(", ")}`);
-  }
-
   if (nonUint.length > 0) {
     errArr.push(`field(s) must be a positive integer: ${nonUint.join(", ")}`);
+  }
+
+  if (nonBuf.length > 0) {
+    errArr.push(`field(s) must be a Buffer: ${nonBuf.join(", ")}`);
+  }
+
+  if (nonStr.length > 0) {
+    errArr.push(`field(s) must be a string: ${nonStr.join(", ")}`);
   }
 
   if (empty.length > 0) {

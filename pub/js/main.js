@@ -74,7 +74,7 @@ function showErr(elementId, message, centered = false) {
 
 document.addEventListener("DOMContentLoaded", () => {
   // Update navigation based on authentication status
-  const isAuthenticated = localStorage.getItem("auth") === "true";
+  const isAuthenticated = Boolean(localStorage.getItem("uid"));
   updateNavigation(isAuthenticated);
 
   /* ============================= Dark Mode ============================= */
@@ -162,7 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // Only register click handlers for "Get started" buttons if not authenticated
-  if (localStorage.getItem("auth") !== "true") {
+  if (!localStorage.getItem("uid")) {
     regModal(navGetStarted, signupModal);
     regModal(heroGetStarted, signupModal);
   }
@@ -230,7 +230,8 @@ document.addEventListener("DOMContentLoaded", () => {
         onClick(navGetStarted, (e) => {
           closeAllModals();
           e.preventDefault();
-          localStorage.removeItem("auth");
+          localStorage.removeItem("uid");
+          localStorage.removeItem("token");
           const isFilesPage = window.location.pathname.endsWith("files");
           const is404Page = window.location.pathname.endsWith("404");
 
@@ -478,7 +479,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const privateKey = data.privateKey;
 
       // For demo purposes, set the user as authenticated
-      localStorage.setItem("auth", "true");
+      localStorage.setItem("uid", data.uid);
+      localStorage.setItem("token", data.token);
       updateNavigation(true);
 
       // Show success message briefly, then show private key modal
@@ -562,7 +564,8 @@ document.addEventListener("DOMContentLoaded", () => {
       // TODO: Handle success case
 
       // For demo purposes, set the user as authenticated
-      localStorage.setItem("auth", "true");
+      localStorage.setItem("uid", data.uid);
+      localStorage.setItem("token", data.token);
       updateNavigation(true);
       showSuccess(fromId("sign-in-submit"), signinForm, signinModal);
     });

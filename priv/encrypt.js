@@ -7,14 +7,47 @@ import crypto from "crypto";
 import argon2 from "argon2";
 
 /**
- * Generate random Initialization Vector (IV).
+ * Generate Initialization Vector (IV) from username.
  *
- * @param {string} username Username to create IV
+ * @param {string} username Username
  * @returns {Buffer} 12-byte IV
+ * @private
  */
-function genIV(username) {
+function _genIVFromUname(username) {
   const hash = crypto.createHash("sha256").update(username).digest();
   return hash.subarray(0, 12);
+}
+
+/**
+ * Generate Initialization Vector (IV) for DEK (Data Encryption Key)
+ * using UID & file name with some randomness.
+ *
+ * @param {string} uid User ID
+ * @param {string} fileName File name
+ * @returns {Buffer} 12-byte IV for DEK
+ */
+function genIVDEK(uid, fileName) {
+  const hash = crypto.createHash("sha256");
+  hash.update(uid);
+  hash.update(fileName);
+  hash.update(crypto.randomBytes(16));
+  return hash.digest().subarray(0, 12);
+}
+
+/**
+ * Generate Initialization Vector (IV) for file using KEK creation
+ * time & file name with some randomness.
+ *
+ * @param {string} kekCreatedAt KEK creation time
+ * @param {string} fileName File name
+ * @returns {Buffer} 12-byte IV for file
+ */
+function genIVFile(kekCreatedAt, fileName) {
+  const hash = crypto.createHash("sha256");
+  hash.update(kekCreatedAt);
+  hash.update(fileName);
+  hash.update(crypto.randomBytes(16));
+  return hash.digest().subarray(0, 12);
 }
 
 /**
@@ -33,11 +66,11 @@ function toBase64(bors) {
 /**
  * Convert base64 string to Buffer.
  *
- * @param {string} base64 Base64 string to convert
+ * @param {string} str Base 64 encoded string
  * @returns {Buffer} Resulting buffer
  */
-function fromBase64(base64) {
-  return Buffer.from(base64, "base64");
+function fromBase64(str) {
+  return Buffer.from(str, "base64");
 }
 
 /**
@@ -45,14 +78,12 @@ function fromBase64(base64) {
  *
  * @param {Buffer} key Key for encryption (32 bytes for AES-256)
  * @param {Buffer} iv 12 byte Initialization Vector (IV)
- * @param {Buffer|string} data Data to encrypt
+ * @param {Buffer} data Data to encrypt
  * @returns {Buffer} Encrypted data
  */
 function encryptData(key, iv, data) {
   const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
-  const dataBuffer = typeof data === "string" ? Buffer.from(data) : data;
-
-  const encrypted = Buffer.concat([cipher.update(dataBuffer), cipher.final()]);
+  const encrypted = Buffer.concat([cipher.update(data), cipher.final()]);
 
   // Get auth tag & combine with encrypted data
   const authTag = cipher.getAuthTag();
@@ -81,15 +112,14 @@ function decryptData(key, iv, data) {
 /**
  * Generate KEK from PEK.
  *
- * @param {string} pek PEK to derive KEK from
+ * @param {Buffer} pdkBuf PEK buffer to derive KEK
  * @param {string} username Username to create IV
  * @returns {KEKObj} Object containing KEK & IV used
  */
-function genKEK(pek, username) {
-  const pekbuf = Buffer.from(pek);
-  const iv = genIV(username);
+function genKEK(pdkBuf, username) {
+  const iv = _genIVFromUname(username);
   const kek = crypto.randomBytes(32);
-  const encryptedKEK = encryptData(pekbuf.subarray(0, 32), iv, kek);
+  const encryptedKEK = encryptData(pdkBuf, iv, kek);
 
   return { encryptedKEK, iv };
 }
@@ -101,17 +131,25 @@ function genKEK(pek, username) {
  * @param {int} memCost Memory cost
  * @param {int} timeCost Time cost
  * @param {int} threads Number of threads
- * @returns {Promise<string>} Hashed password
+ * @param {Buffer} [salt=null] Salt (optional for random salt)
+ * @returns {HashNSalt} Object containing hash & salt
  */
-async function hashPw(pw, memCost, timeCost, threads) {
+async function hashPw(pw, memCost, timeCost, threads, salt = null) {
+  if (!salt) {
+    salt = crypto.randomBytes(16); // Generate random salt if not provided
+  }
+
   const hash = await argon2.hash(pw, {
     type: argon2.argon2id,
     memoryCost: memCost,
     timeCost: timeCost,
     parallelism: threads,
+    salt: salt,
+    hashLength: 32,
+    raw: true,
   });
 
-  return hash;
+  return { hash, salt };
 }
 
 /**
@@ -134,4 +172,4 @@ function genED25519Pair() {
   return { publicKey, privateKey };
 }
 
-export { genIV, toBase64, fromBase64, encryptData, decryptData, genKEK, hashPw, genED25519Pair };
+export { genIVDEK, genIVFile, toBase64, fromBase64, encryptData, decryptData, genKEK, hashPw, genED25519Pair };

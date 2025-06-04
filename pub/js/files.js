@@ -4,7 +4,7 @@
  */
 
 import { fromId, queryAll, onClick, regPwToggle } from "./util.js";
-import { toBase64, encryptFile } from "./encrypt.js";
+import { toBase64 } from "./encrypt.js";
 
 /********************************************************
 / HTML Templates
@@ -672,17 +672,52 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const file = fileInput.files[0];
-      const uploadStatus = fromId("upload-status");
 
-      // Show uploading indicator
-      uploadStatus.classList.add("uploading");
-      uploadStatus.style.display = "flex";
+      const uid = localStorage.getItem("uid");
+      const token = localStorage.getItem("token");
+
+      if (!uid || !token) {
+        throw new Error("User credentials have been cleared. Please log out & back in again.");
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("fileName", file.name);
+      formData.append("fileType", file.type || file.name.split(".").pop());
+      formData.append("fileSize", file.size.toString());
+      formData.append("filePassword", filepw);
+      formData.append("userId", uid);
+      formData.append("token", token);
 
       try {
-        // Delegate encryption to server
-        const payload = await encryptFile(file, filepw);
+        // const fileBytes = new Uint8Array(await file.arrayBuffer());
+        // const b64file = toBase64(fileBytes);
 
-        console.log("Payload from server encryption:", payload);
+        // Prepare payload for server
+        // const payload = {
+        //   fileName: file.name,
+        //   fileType: file.type || file.name.split(".").pop(),
+        //   fileSize: file.size,
+        //   fileContent: b64file,
+        //   filePw: filepw,
+        //   userId: uid,
+        //   token: token,
+        // };
+
+        // Send to server for encryption
+        const res = await fetch("/encrypt-file", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const emsg = await res.text();
+          throw new Error(emsg || "Error encrypting file");
+        }
+
+        const data = await res.json();
+
+        console.log("Payload from server encryption:", data);
         // TODO: send to backend via fetch
 
         // Create a new File instance
@@ -703,12 +738,8 @@ document.addEventListener("DOMContentLoaded", () => {
         notify(`"${newFile.name}" has been encrypted and uploaded successfully.`, "success");
       } catch (error) {
         console.error("Error during file encryption:", error);
-        filepwError.textContent = "Failed to encrypt file: " + (error.message || "Unknown error");
+        filepwError.textContent = error.message || "Unknown error";
         filepwError.classList.add("form__error--visible");
-      } finally {
-        // Hide uploading indicator
-        uploadStatus.classList.remove("uploading");
-        uploadStatus.style.display = "none";
       }
     });
   }
@@ -835,7 +866,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   onClick(signOutBtn, () => {
     // Reset auth state
-    localStorage.removeItem("auth");
+    localStorage.removeItem("uid");
+    localStorage.removeItem("token");
     window.location.href = "/";
   });
 

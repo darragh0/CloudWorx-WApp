@@ -6,25 +6,16 @@
     <title>Files - CloudWorx</title>
     <link rel="icon" type="image/x-icon" href="img/ico/favicon.ico" />
     <link rel="stylesheet" href="css/files.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <script>
-      if (localStorage.getItem("auth") !== "true") {
-        window.location.href = "/";
-      }
+      if (!localStorage.getItem("uid")) window.location.href = "/";
     </script>
   </head>
   <body>
     <nav class="nav">
       <div class="nav__left">
         <a href="/" class="nav__link">
-          <img
-            src="img/webp/cloudworx-logo.webp"
-            alt="CloudWorx Logo"
-            class="logo"
-          />
+          <img src="img/webp/cloudworx-logo.webp" alt="CloudWorx Logo" class="logo" />
           <div class="app-name">CloudWorx</div>
         </a>
       </div>
@@ -46,27 +37,18 @@
         <p class="page-header__label">My Files</p>
         <h1>Manage your cloud files</h1>
         <p class="page-header__description">
-          <b>Access and share your files securely</b> &ndash; upload, download,
-          and control who has access to your data from anywhere.
+          <b>Access and share your files securely</b> &ndash; upload, download, and control who has access to your data from anywhere.
         </p>
       </section>
 
       <section class="files-container">
         <div class="files-actions">
           <div class="files-filter">
-            <button class="filter-btn filter-btn--active" data-filter="owned">
-              Owned files
-            </button>
-            <button class="filter-btn" data-filter="shared-by-me">
-              Shared by me
-            </button>
-            <button class="filter-btn" data-filter="shared-by-others">
-              Shared by others
-            </button>
+            <button class="filter-btn filter-btn--active" data-filter="owned">Owned files</button>
+            <button class="filter-btn" data-filter="shared-by-me">Shared by me</button>
+            <button class="filter-btn" data-filter="shared-by-others">Shared by others</button>
           </div>
-          <button class="btn btn--primary" id="upload-file-btn">
-            <i class="fas fa-upload"></i> Upload
-          </button>
+          <button class="btn btn--primary" id="upload-file-btn"><i class="fas fa-upload"></i> Upload</button>
         </div>
 
         <div class="files-table-container">
@@ -96,34 +78,20 @@
           <button class="modal__close"><i class="fas fa-times"></i></button>
         </div>
         <div class="share-modal-content">
-          <p class="share-file-name">
-            File: <span id="share-file-name"></span>
-          </p>
+          <p class="share-file-name">File: <span id="share-file-name"></span></p>
 
           <div class="share-users-list">
             <h3>Users with access</h3>
-            <div id="users-with-access" class="users-list">
-              <- Users with access will be listed here -->
-            </div>
+            <div id="users-with-access" class="users-list"><- Users with access will be listed here --></div>
           </div>
 
           <form class="modal__form" id="share-form">
             <div class="form__group">
-              <label for="share-username" class="form__label"
-                >Share with user</label
-              >
-              <input
-                type="text"
-                id="share-username"
-                class="form__input"
-                placeholder="Enter username"
-                required
-              />
+              <label for="share-username" class="form__label">Share with user</label>
+              <input type="text" id="share-username" class="form__input" placeholder="Enter username" required />
               <div class="form__error" id="share-username-error"></div>
             </div>
-            <button type="submit" id="share-submit" class="form__submit">
-              Grant Access
-            </button>
+            <button type="submit" id="share-submit" class="form__submit">Grant Access</button>
           </form>
         </div>
       </div>
@@ -146,23 +114,14 @@
                 <p>Drag & drop your file here</p>
                 <p>or</p>
               </div>
-              <label for="file-upload" class="file-select-button"
-                >Browse Files</label
-              >
-              <input
-                type="file"
-                id="file-upload"
-                class="form__input form__file-input"
-                hidden
-              />
+              <label for="file-upload" class="file-select-button">Browse Files</label>
+              <input type="file" id="file-upload" class="form__input form__file-input" hidden />
               <div class="selected-file" id="selected-file"></div>
             </div>
             <div class="form__error" id="file-upload-error"></div>
           </div>
           <div class="form__group">
-            <label for="upload-file-password" class="form__label"
-              >File Password</label
-            >
+            <label for="upload-file-password" class="form__label">File Password</label>
             <input
               type="password"
               id="upload-file-password"
@@ -172,21 +131,13 @@
               autocomplete="current-password"
               placeholder="Enter your file password to encrypt this file"
             />
-            <i
-              class="fas fa-eye form__password-toggle"
-              data-target="upload-file-password"
-            ></i>
+            <i class="fas fa-eye form__password-toggle" data-target="upload-file-password"></i>
             <div class="form__info">
-              <p>
-                Your file password is required to encrypt & upload files
-                securely.
-              </p>
+              <p>Your file password is required to encrypt & upload files securely.</p>
             </div>
             <div class="form__error" id="upload-file-password-error"></div>
           </div>
-          <button type="submit" id="upload-submit" class="form__submit">
-            Upload
-          </button>
+          <button type="submit" id="upload-submit" class="form__submit">Upload</button>
         </form>
       </div>
     </div>
@@ -199,14 +150,10 @@
         </div>
         <form class="modal__form" id="download-form">
           <div class="form__info">
-            <p>
-              Please enter your file password to decrypt & download this file.
-            </p>
+            <p>Please enter your file password to decrypt & download this file.</p>
           </div>
           <div class="form__group">
-            <label for="download-password" class="form__label"
-              >File Password</label
-            >
+            <label for="download-password" class="form__label">File Password</label>
             <input
               type="password"
               id="download-password"
@@ -215,15 +162,10 @@
               required
               autocomplete="current-password"
             />
-            <i
-              class="fas fa-eye form__password-toggle"
-              data-target="download-password"
-            ></i>
+            <i class="fas fa-eye form__password-toggle" data-target="download-password"></i>
             <div class="form__error" id="download-modal-password-error"></div>
           </div>
-          <button type="submit" id="download-submit" class="form__submit">
-            Download File
-          </button>
+          <button type="submit" id="download-submit" class="form__submit">Download File</button>
         </form>
       </div>
     </div>

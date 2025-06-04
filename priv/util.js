@@ -5,6 +5,8 @@
 
 import dotenv from "dotenv";
 import fs from "fs";
+import { exec } from "child_process";
+import { promisify } from "util";
 import path, { resolve, join } from "path";
 
 /**
@@ -22,6 +24,16 @@ function fmtTstr(tStr, values) {
 class Logger {
   /** @type {LoggerMap} */
   static _loggers = new Map();
+
+  /** @type {Object.Map<LogLevel, number>} */
+  static _levelMap = {
+    TRA: 0,
+    DEB: 1,
+    INF: 2,
+    WAR: 3,
+    ERR: 4,
+    CRI: 5,
+  };
 
   /**
    * Get or create a named logger.
@@ -42,11 +54,12 @@ class Logger {
    *
    * @param {string} name Name of the logger (module or app name)
    * @param {LoggerParams} [fmtParams={}] Formatting parameters (optional)
+   * @param {LogLevel} [level="debug"] Log level to set
    * @param {number} [flushThreshold=1000] No. of messages before flushing output (for files)
    * @param {number} [rotateAtBytes=5 * 1024 * 1024] Rotate log file at this size (in bytes)
    * @returns {Logger}
    */
-  constructor(name, fmtParams = {}, flushThreshold = 1000, rotateAtBytes = 5 * 1024 * 1024) {
+  constructor(name, fmtParams = {}, level = "DEB", flushThreshold = 1000, rotateAtBytes = 5 * 1024 * 1024) {
     if (!("name" in fmtParams)) {
       fmtParams.name = "\x1b[2;93m({name})\x1b[0m";
     } else if (fmtParams.name === "plain") {
@@ -99,6 +112,7 @@ class Logger {
 
     Logger._loggers.set(name, this);
     this.name = name;
+    this.level = Logger._levelMap[level];
     this.flushThreshold = flushThreshold;
     this.fmtParams = fmtParams;
     this.msgCount = 0;
@@ -110,9 +124,26 @@ class Logger {
     this._fmtDate = null;
     this._fmtLevel = null;
     this._fmtAll = null;
+
+    this._createLogFns();
   }
 
-  _fmtFactory() {
+  /**
+   * Set the log level for this logger.
+   *
+   * @param {LogLevel} level Log level to set
+   */
+  setLogLevel(level) {
+    this.level = Logger._levelMap[level];
+  }
+
+  /**
+   * Create format functions based on the provided formatting parameters.
+   * This is called when the logger is created or when a log message is formatted.
+   *
+   * @private
+   */
+  _createLogFns() {
     if (this.fmtParams.name) this._fmtName = () => fmtTstr(this.fmtParams.name, { name: this.name });
 
     if (this.fmtParams.date) {
@@ -188,10 +219,6 @@ class Logger {
    * @private
    */
   _fmt(msg, ind, level, color) {
-    if (!this._fmtAll) {
-      this._fmtFactory();
-    }
-
     return this._fmtAll(msg, ind, level, color);
   }
 
@@ -207,6 +234,10 @@ class Logger {
    * @see Logger.fmtTstr
    */
   _log(msg, ind, level, color) {
+    if (Logger._levelMap[level] < this.level) {
+      return;
+    }
+
     const fmted = this._fmt(msg, ind, level, color);
     this.msgCount++;
 
@@ -230,7 +261,6 @@ class Logger {
    * Force flush message buffer to output (only works for files).
    *
    * @see Logger._log
-   * @private
    */
   flushToFile() {
     if (fs.existsSync(this.fmtParams.out) && fs.statSync(this.fmtParams.out).size >= this.rotateAtBytes) {
@@ -248,7 +278,7 @@ class Logger {
    *
    * @param {Logger} logger Other logger to link to
    */
-  link(logger) {
+  propagateTo(logger) {
     if (this.links.includes(logger)) {
       throw new Error(`Logger \`${logger.name}\` is already linked to \`${this.name}\``);
     }
@@ -327,12 +357,12 @@ class Logger {
  * @returns {Promise<boolean>} True if user exists, false otherwise
  */
 async function checkUserExists(username, endpoint, logger, email = null) {
+  logger.debug(`Sending get-users request to API [GET \`${endpoint}\`]`);
   try {
-    logger.debug(`Sending get-users request to API [GET \`${endpoint}\`]`);
     const response = await fetch(endpoint);
 
     if (!response.ok) {
-      logger.err(`Failed to fetch users from API: ${response.status}`);
+      logger.crit(`Failed to fetch users from API: ${response.status}`);
       return false;
     }
 
@@ -340,7 +370,7 @@ async function checkUserExists(username, endpoint, logger, email = null) {
     logger.trace(`Received response:\n\`${JSON.stringify(data, null, 2)}\``);
 
     if (!data.users || !Array.isArray(data.users)) {
-      logger.err(`Invalid response format from users API: ${JSON.stringify(data)}`);
+      logger.crit(`Invalid response format from users API: ${JSON.stringify(data)}`);
       return false;
     }
 
@@ -349,9 +379,106 @@ async function checkUserExists(username, endpoint, logger, email = null) {
     }
     return data.users.some((user) => user.username === username);
   } catch (error) {
-    logger.err(`Error checking user existence: ${error.message}`);
+    logger.crit(`Error checking user existence: ${error.message}`);
     return false;
   }
+}
+
+/**
+ * Fetch user data by UID via API call.
+ *
+ * @param {string} uid User ID to fetch data for
+ * @param {string} endpoint API endpoint to fetch user data from
+ * @param {Logger} logger Logger instance for logging
+ * @param {string} token JWT token for API access
+ * @returns {Promise<Object>} User data object or empty object if not found
+ */
+async function getUserData(uid, endpoint, logger, token) {
+  logger.debug(`Sending get-users request to API [GET \`${endpoint}\`]`);
+  try {
+    const response = await fetch(endpoint, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      logger.warn(`Failed to fetch data for user \`${uid}\` from API: ${response.status}`);
+      return {};
+    }
+
+    const data = await response.json();
+    logger.trace(`Received response:\n\`${JSON.stringify(data, null, 2)}\``);
+    return data;
+  } catch (error) {
+    logger.crit(`Error fetching user data: ${error.message}`);
+    return {};
+  }
+}
+
+/**
+ * Print usage information for the server script.
+ */
+function pusage() {
+  console.log(
+    "\n\x1b[1;96mUsage:\x1b[0;96m node server.js [--port \x1b[2mPORT\x1b[0;96m] [--retry-port] [--help]\x1b[0m\n\n" +
+      "\x1b[1;96mOptions:\x1b[0;96m\n" +
+      "  -p, --port \x1b[2mPORT\x1b[0m         Specify the port to run the server on (default=\x1b[93m3443\x1b[0m)\n" +
+      "  \x1b[96m-r, --retry-port\x1b[0m        Keep trying ports 100x until one is available\n" +
+      "  \x1b[96m-k, --kill-port\x1b[0m         Kill any server running on the specified port \x1b[91m[potentially dangerous]\x1b[0m\n" +
+      "  \x1b[96m-u, --usage\x1b[0m             Show this help message\n" +
+      "  \x1b[96m-h, --help\x1b[0m              ^\n"
+  );
+}
+
+/**
+ * Parse command line arguments for server configuration.
+ *
+ * @return {{retry: boolean, forceKill: boolean, port: number}} Parsed arguments
+ */
+function parseArgv() {
+  if (process.argv.length < 2) {
+    perr(`Expected min. 2 args but got ${process.argv.length}`);
+  }
+
+  let args = process.argv.slice(2);
+  let argv = {
+    retry: false,
+    forceKill: false,
+    port: 3443,
+  };
+
+  const VALID_ARGS = ["--port", "-p", "--retry-port", "-r", "--kill-port", "-k", "--usage", "-u", "--help", "-h"];
+
+  for (const arg of args) {
+    if (!VALID_ARGS.includes(arg)) {
+      perr(`Invalid argument: \x1b[96m${arg}\x1b[0m`);
+      pusage();
+    }
+
+    if (["--usage", "-u", "--help", "-h"].includes(arg)) {
+      pusage();
+      process.exit(0);
+    }
+    if (arg.startsWith("--port") || arg.startsWith("-p")) {
+      argv.port = parseInt(args[args.indexOf("--port") + 1] || args[args.indexOf("-p") + 1]);
+      if (isNaN(argv.port) || argv.port < 1 || argv.port > 65535) {
+        perr(`Invalid port number: \x1b[2;96m\`${argv.port}\`\x1b[0m`);
+      }
+    } else if (["--retry-port", "-r"].includes(arg)) {
+      if (argv.forceKill) {
+        perr("Cannot use \x1b[96m--kill-port\x1b[0m with \x1b[96m--retry-port\x1b[0m");
+      }
+      argv.retry = true;
+    } else if (["--kill-port", "-k"].includes(arg)) {
+      if (argv.retry) {
+        perr("Cannot use \x1b[96m--kill-port\x1b[0m with \x1b[96m--retry-port\x1b[0m");
+      }
+      argv.forceKill = true;
+    }
+  }
+
+  return argv;
 }
 
 /**
@@ -417,4 +544,105 @@ function checkFilesExist(proj_dir, logger, ...paths) {
   if (exit) process.exit(1);
 }
 
-export { Logger, checkUserExists, parseDotEnv, checkFilesExist };
+/**
+ * Print error message to stderr (before logger setup).
+ *
+ * @param {string} msg Error message to print
+ * @private
+ */
+function perr(msg) {
+  console.error(`\x1b[1;91mError:\x1b[0m ${msg}`);
+  process.exit(1);
+}
+
+const _execAsync = promisify(exec);
+
+/**
+ * Forcefully kills processes using the specified port across different platforms.
+ *
+ * @param {number} port The port number to free up by killing associated processes
+ * @param {Logger} logger Logger instance for logging
+ * @returns {Promise<void>} Resolves when processes are successfully killed and port is released
+ * @async
+ */
+async function killPort(port, logger) {
+  const platform = process.platform;
+
+  try {
+    if (platform === "win32") {
+      // Windows
+      const { stdout } = await _execAsync(`netstat -ano | findstr :${port}`);
+      const lines = stdout.trim().split("\n");
+
+      for (const line of lines) {
+        const parts = line.trim().split(/\s+/);
+        const pid = parts[parts.length - 1];
+        if (pid && !isNaN(pid)) {
+          await _execAsync(`taskkill /PID ${pid} /F`);
+          logger.info(`Killed process \`${pid}\` on port \`${port}\``);
+        }
+      }
+    } else {
+      // Unix-like systems (Linux, macOS, etc.)
+      try {
+        const { stdout } = await _execAsync(`lsof -ti:${port}`);
+        const pids = stdout
+          .trim()
+          .split("\n")
+          .filter((pid) => pid);
+
+        for (const pid of pids) {
+          await _execAsync(`kill -9 ${pid}`);
+          logger.info(`Killed process \`${pid}\` on port \`${port}\``);
+        }
+      } catch (lsofError) {
+        // Fallback to fuser if lsof fails
+        try {
+          await _execAsync(`fuser -k ${port}/tcp`);
+          logger.info(`Killed processes on port \`${port}\` using fuser`);
+        } catch (fuserError) {
+          // Final fallback: use netstat + ps (available on most systems)
+          try {
+            const { stdout } = await _execAsync(`netstat -tlnp 2>/dev/null | grep :${port}`);
+            const lines = stdout.trim().split("\n");
+
+            for (const line of lines) {
+              const pidMatch = line.match(/(\d+)\/[^\s]+$/);
+              if (pidMatch) {
+                const pid = pidMatch[1];
+                await _execAsync(`kill -9 ${pid}`);
+                logger.info(`Killed process \`${pid}\` on port \`${port}\` using netstat`);
+              }
+            }
+          } catch (netstatError) {
+            // Last resort: use ss command (part of iproute2, usually available)
+            try {
+              const { stdout } = await _execAsync(`ss -tlnp | grep :${port}`);
+              const lines = stdout.trim().split("\n");
+
+              for (const line of lines) {
+                const pidMatch = line.match(/pid=(\d+)/);
+                if (pidMatch) {
+                  const pid = pidMatch[1];
+                  await _execAsync(`kill -9 ${pid}`);
+                  logger.info(`Killed process \`${pid}\` on port \`${port}\` using ss`);
+                }
+              }
+            } catch (ssError) {
+              throw new Error(
+                `All methods failed - lsof: ${lsofError.message}, fuser: ${fuserError.message}, netstat: ${netstatError.message}, ss: ${ssError.message}`
+              );
+            }
+          }
+        }
+      }
+    }
+
+    // Wait a moment for port to be released
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  } catch (error) {
+    logger.crit(`Failed to kill port \`${port}\`: ${error.message}`);
+  }
+}
+
+export { Logger, checkUserExists, parseArgv, parseDotEnv, checkFilesExist, getUserData, killPort };

@@ -11,6 +11,8 @@
  * @typedef {Object.<string, *>} TStrValues with key-value pairs for template replacement.
  * @typedef {string} FPathStr Path to a file (relative or absolute).
  *
+ * @typedef {"DEB" | "INF" | "WAR" | "ERR" | "CRI"} LogLevel
+ *
  * @typedef {object} LoggerParams Parameters for configuring a logger.
  * @property {TStr | "plain" | null} [name] Name of the logger
  * @property {TStr | "plain" | null} [date] Date of the log message.
@@ -23,6 +25,7 @@
  * @property {"stdout" | "stderr" | FPathStr} [out] Output destination for the logs.
  *
  * @typedef {"Password" | "File Password"} PasswordKey
+ * @typedef {Promise<{hash: Buffer, salt: Buffer} HashNSalt
  *
  * @typedef {object} ED25519KeyPair
  * @property {string} publicKey Public key in PEM format
