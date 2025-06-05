@@ -5,7 +5,7 @@ body {
   background-image: url("../img/svg/map.svg");
   background-repeat: no-repeat;
   background-position: center calc(100% + 40px);
-  background-size: contain; // Or "cover" depending on the desired scaling
+  background-size: contain;
 }
 
 body.dark-mode {
@@ -13,5 +13,5 @@ body.dark-mode {
   background-image: url("../img/svg/map-dark.svg");
   background-repeat: no-repeat;
   background-position: center calc(100% + 40px);
-  background-size: contain; // Or "cover" depending on the desired scaling
+  background-size: contain;
 }

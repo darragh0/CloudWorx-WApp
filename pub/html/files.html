@@ -37,7 +37,8 @@
         <p class="page-header__label">My Files</p>
         <h1>Manage your cloud files</h1>
         <p class="page-header__description">
-          <b>Access and share your files securely</b> &ndash; upload, download, and control who has access to your data from anywhere.
+          <b>Access and share your files securely</b> &ndash; upload, download, and control who has access to your data
+          from anywhere.
         </p>
       </section>
 
@@ -57,8 +58,9 @@
               <tr>
                 <th>Name</th>
                 <th>Owner</th>
+                <th>File Type</th>
                 <th>Size</th>
-                <th>Last Modified</th>
+                <th id="created-at-header">Created At</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -72,28 +74,118 @@
 
     <!-- Share Modal -->
     <div class="modal" id="share-modal">
-      <div class="modal__content">
+      <div class="modal__content modal__content--wide">
         <div class="modal__header">
-          <h2>Share Access</h2>
+          <h2>Share File</h2>
           <button class="modal__close"><i class="fas fa-times"></i></button>
         </div>
-        <div class="share-modal-content">
-          <p class="share-file-name">File: <span id="share-file-name"></span></p>
+        <form class="modal__form" id="share-form">
+          <div class="share-form-display">
+            <!-- Info Section - spans both columns at top -->
+            <div class="share-form-info">
+              <p><strong>Share file:</strong> "<span id="share-file-name"></span>" with another user</p>
+              <p>
+                You need to provide your private keys to share this file securely. Both keys are required for secure
+                file sharing.
+              </p>
+            </div>
 
-          <div class="share-users-list">
-            <h3>Users with access</h3>
-            <div id="users-with-access" class="users-list"><- Users with access will be listed here --></div>
-          </div>
-
-          <form class="modal__form" id="share-form">
-            <div class="form__group">
+            <!-- Username input - spans both columns -->
+            <div class="share-form-username">
               <label for="share-username" class="form__label">Share with user</label>
               <input type="text" id="share-username" class="form__input" placeholder="Enter username" required />
               <div class="form__error" id="share-username-error"></div>
             </div>
-            <button type="submit" id="share-submit" class="form__submit">Grant Access</button>
-          </form>
-        </div>
+
+            <!-- Current Users Section - spans both columns -->
+            <div class="share-form-current-users" id="share-form-current-users" style="display: none">
+              <h3 class="share-form-section__title">Currently Shared With</h3>
+              <div class="current-users-list" id="current-users-list">
+                <!-- Current users will be populated here -->
+              </div>
+            </div>
+
+            <!-- File password input - spans both columns -->
+            <div class="share-form-password">
+              <label for="share-file-password" class="form__label">File Password</label>
+              <div class="form__input-wrapper">
+                <input
+                  type="password"
+                  id="share-file-password"
+                  class="form__input"
+                  placeholder="Enter your file password"
+                  required
+                  autocomplete="current-password"
+                />
+                <i class="fas fa-eye form__password-toggle" data-target="share-file-password"></i>
+              </div>
+              <div class="form__error" id="share-file-password-error"></div>
+            </div>
+
+            <!-- Decryption Key Section - bottom left -->
+            <div class="share-form-section">
+              <h3 class="share-form-section__title">Decryption Key</h3>
+              <div class="share-form-key-input">
+                <div class="form__file-upload">
+                  <input
+                    type="file"
+                    id="x25519-key-file"
+                    class="form__input form__file-input"
+                    accept=".pem,.key,.txt"
+                    hidden
+                  />
+                  <label for="x25519-key-file" class="form__submit form__submit--secondary">
+                    <i class="fas fa-upload"></i> Upload Key File
+                  </label>
+                  <span class="file-name" id="x25519-file-name"></span>
+                </div>
+                <div class="form__divider">OR</div>
+                <textarea
+                  id="x25519-key-text"
+                  class="share-form-textarea"
+                  placeholder="Paste your Decryption Key here..."
+                  rows="5"
+                ></textarea>
+              </div>
+              <div class="form__error" id="x25519-key-error"></div>
+            </div>
+
+            <!-- Signing Key Section - bottom right -->
+            <div class="share-form-section">
+              <h3 class="share-form-section__title">Signing Key</h3>
+              <div class="share-form-key-input">
+                <div class="form__file-upload">
+                  <input
+                    type="file"
+                    id="ed25519-key-file"
+                    class="form__input form__file-input"
+                    accept=".pem,.key,.txt"
+                    hidden
+                  />
+                  <label for="ed25519-key-file" class="form__submit form__submit--secondary">
+                    <i class="fas fa-upload"></i> Upload Key File
+                  </label>
+                  <span class="file-name" id="ed25519-file-name"></span>
+                </div>
+                <div class="form__divider">OR</div>
+                <textarea
+                  id="ed25519-key-text"
+                  class="share-form-textarea"
+                  placeholder="Paste your Signing Key here..."
+                  rows="5"
+                ></textarea>
+              </div>
+              <div class="form__error" id="ed25519-key-error"></div>
+            </div>
+
+            <!-- Submit Button - centered below -->
+            <div class="share-form-actions">
+              <button type="submit" id="share-submit" class="form__submit form__submit--continue">
+                Share File <i class="fas fa-share"></i>
+              </button>
+            </div>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -111,29 +203,30 @@
                 <i class="fas fa-cloud-upload-alt"></i>
               </div>
               <div class="file-drop-message">
-                <p>Drag & drop your file here</p>
+                <p>Drag & drop your files here</p>
                 <p>or</p>
               </div>
               <label for="file-upload" class="file-select-button">Browse Files</label>
-              <input type="file" id="file-upload" class="form__input form__file-input" hidden />
-              <div class="selected-file" id="selected-file"></div>
+              <input type="file" id="file-upload" class="form__input form__file-input" multiple hidden />
+              <div class="selected-files" id="selected-files">
+                <!-- Selected files will be displayed here -->
+              </div>
             </div>
             <div class="form__error" id="file-upload-error"></div>
           </div>
           <div class="form__group">
             <label for="upload-file-password" class="form__label">File Password</label>
-            <input
-              type="password"
-              id="upload-file-password"
-              name="upload-file-password"
-              class="form__input"
-              required
-              autocomplete="current-password"
-              placeholder="Enter your file password to encrypt this file"
-            />
-            <i class="fas fa-eye form__password-toggle" data-target="upload-file-password"></i>
-            <div class="form__info">
-              <p>Your file password is required to encrypt & upload files securely.</p>
+            <div class="form__input-wrapper">
+              <input
+                type="password"
+                id="upload-file-password"
+                name="upload-file-password"
+                class="form__input"
+                required
+                autocomplete="current-password"
+                placeholder="Enter your file password to encrypt this file"
+              />
+              <i class="fas fa-eye form__password-toggle" data-target="upload-file-password"></i>
             </div>
             <div class="form__error" id="upload-file-password-error"></div>
           </div>
@@ -154,15 +247,17 @@
           </div>
           <div class="form__group">
             <label for="download-password" class="form__label">File Password</label>
-            <input
-              type="password"
-              id="download-password"
-              name="download-password"
-              class="form__input"
-              required
-              autocomplete="current-password"
-            />
-            <i class="fas fa-eye form__password-toggle" data-target="download-password"></i>
+            <div class="form__input-wrapper">
+              <input
+                type="password"
+                id="download-password"
+                name="download-password"
+                class="form__input"
+                required
+                autocomplete="current-password"
+              />
+              <i class="fas fa-eye form__password-toggle" data-target="download-password"></i>
+            </div>
             <div class="form__error" id="download-modal-password-error"></div>
           </div>
           <button type="submit" id="download-submit" class="form__submit">Download File</button>

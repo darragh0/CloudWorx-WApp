@@ -4,22 +4,19 @@
  */
 
 import { fromId, queryAll, onClick, regPwToggle } from "./util.js";
-import { toBase64 } from "./encrypt.js";
 
 /********************************************************
-/ HTML Templates
+ / HTML Templates
 /********************************************************/
 
 // HTML templates for file list and actions
 const HTML_TEMPLATES = {
   noFiles: `
     <tr>
-      <td colspan="5" class="no-files-message">No files found</td>
+      <td colspan="6" class="no-files-message">No files found</td>
     </tr>
   `,
   shareIcon: '<i class="fas fa-share-alt shared-icon"></i>',
-  sharedWithYouBadge: '<span class="file-badge file-badge--shared">Shared with you</span>',
-  sharedByYouBadge: '<span class="file-badge file-badge--owned">Shared by you</span>',
   ownedFileActions: (file) => `
     <button class="download-btn tooltip" title="Download" data-tooltip="Download file">
       <i class="fas fa-download"></i>
@@ -33,12 +30,9 @@ const HTML_TEMPLATES = {
       <i class="fas fa-trash"></i>
     </button>
   `,
-  sharedFileActions: `
+  sharedFileActions: (file) => `
     <button class="download-btn tooltip" title="Download" data-tooltip="Download file">
       <i class="fas fa-download"></i>
-    </button>
-    <button class="share-btn tooltip" title="View Access" data-tooltip="View who has access">
-      <i class="fas fa-users"></i>
     </button>
   `,
   sharedUsers: {
@@ -96,102 +90,332 @@ const HTML_TEMPLATES = {
 };
 
 /********************************************************
- / File Class Definition
+ / File Utility Functions
 /********************************************************/
 
-class FileObj {
-  /**
-   * File object constructor.
-   *
-   * @param {string} name File name
-   * @param {string} owner File owner
-   * @param {int} size Size in bytes
-   * @param {Date} mod Date of last modification
-   * @param {boolean} shared Whether the file is shared with others (default: false)
-   */
-  constructor(name, owner, size, mod, shared = false) {
-    if (size < 0) {
-      throw new Error("File size cannot be negative");
-    }
-    this.name = name;
-    this.owner = owner;
-    this.size = size;
-    this.mod = mod;
-    this.shared = shared;
+/**
+ * Create a file object with validation.
+ *
+ * @param {string} name File name
+ * @param {string} type File type/extension or MIME type
+ * @param {string} owner File owner
+ * @param {number} size Size in bytes
+ * @param {Date} mod Date of last modification
+ * @param {string} [fileId=null] File ID from backend
+ * @param {Object} [dekData=null] DEK encryption data
+ * @param {string} [ivFile=null] IV for file encryption
+ * @param {string} [assocDataFile=null] Associated data for file
+ * @param {boolean} [shared=false] Whether the file is shared with others
+ * @param {string} [sharedByUsername=null] Username of who shared the file (for shared files)
+ * @param {string} [sharedBy=null] ID of who shared the file (for shared files)
+ * @param {Array} [shares=null] Array of shares information for files shared by current user
+ * @returns {Object} File object
+ */
+function mkFile(
+  name,
+  type,
+  owner,
+  size,
+  mod,
+  fileId = null,
+  dekData = null,
+  ivFile = null,
+  assocDataFile = null,
+  shared = false,
+  sharedByUsername = null,
+  sharedBy = null,
+  shares = null,
+) {
+  if (size < 0) {
+    throw new Error("File size cannot be negative");
+  }
+  return {
+    name,
+    type,
+    owner,
+    size,
+    mod,
+    fileId,
+    dekData,
+    ivFile,
+    assocDataFile,
+    shared,
+    sharedByUsername,
+    sharedBy,
+    shares,
+  };
+}
+
+/**
+ * Check if the file size is invalid.
+ *
+ * @param {number} fsize File size in bytes
+ * @returns {boolean} True if size is invalid, false otherwise
+ */
+function isInvalidSize(fsize) {
+  return fsize === undefined || fsize === null || isNaN(fsize) || fsize < 0;
+}
+
+/**
+ * Return file size in human-readable format.
+ *
+ * @param {number} fsize File size in bytes
+ * @returns {string} Formatted file size
+ */
+function fmtFileSize(fsize) {
+  if (isInvalidSize(fsize)) {
+    return "Invalid size";
   }
 
-  /**
-   * Return file size in human-readable format.
-   */
-  fmtSize() {
-    const units = ["B", "KB", "MB", "GB", "TB", "PB"];
-    if (this.size < 0) return "Invalid size";
-    if (this.size === 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB", "PB"];
+  if (fsize < 0) return "Invalid size";
+  if (fsize === 0) return "0 B";
 
-    let size = this.size;
-    let i = 0;
+  let i = 0;
+  let size = fsize;
 
-    while (size >= 1024 && i < units.length - 1) {
-      size /= 1024;
-      i++;
-    }
-
-    return `${size.toFixed(2)} ${units[i]}`;
+  while (size >= 1024 && i < units.length - 1) {
+    size /= 1024;
+    i++;
   }
 
-  fmtDate() {
-    return this.mod.toLocaleString();
-  }
+  return `${size.toFixed(2)} ${units[i]}`;
+}
 
-  /**
-   * Return whether the file is owned by the current user.
-   */
-  isOwned() {
-    return this.owner === "me";
-  }
+/**
+ * Return formatted date string.
+ *
+ * @param {Date} fcreated File object
+ * @returns {string} Formatted date
+ */
+function fmtFileDate(fcreated) {
+  return fcreated.toLocaleString("en-GB") || "Unknown";
+}
+
+/**
+ * Return whether the file is owned by the current user.
+ *
+ * @param {Object} file File object
+ * @returns {boolean} True if owned by current user
+ */
+function isFileOwned(file) {
+  return file.owner === "me";
+}
+
+/**
+ * Return formatted file type for display.
+ * Gets MIME type if known file type, else file extension.
+ *
+ * @param {string|null} ftype File type
+ * @returns {string} Formatted file type or extension
+ */
+function fmtFileType(ftype) {
+  const mimeTypes = {
+    txt: "text/plain",
+    html: "text/html",
+    css: "text/css",
+    js: "application/javascript",
+    json: "application/json",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    gif: "image/gif",
+    svg: "image/svg+xml",
+    pdf: "application/pdf",
+    zip: "application/zip",
+    mp4: "video/mp4",
+    mp3: "audio/mpeg",
+  };
+
+  return ftype && ftype in mimeTypes ? mimeTypes[ftype] : ftype || "Unknown";
 }
 
 /********************************************************
- / Mock Data
+ / Data Storage
 /********************************************************/
 
-// Mock data for demonstration
-const ALL_FILES = [
-  new FileObj(
-    "project_docs.pdf",
-    "me",
-    2.5 * 1024 * 1024, // 2.4 MB
-    new Date("2025-05-15T12:11:45"),
-    false
-  ),
-  new FileObj(
-    "financial_report.xlsx",
-    "me",
-    1.9 * 1024 * 1024, // 1.8 MB
-    new Date("2025-05-10T08:45:12"),
-    true
-  ),
-  new FileObj(
-    "presentation.pptx",
-    "john_doe",
-    4.4 * 1024 * 1024, // 4.2 MB
-    new Date("2025-05-18T14:03:23"),
-    true
-  ),
-  new FileObj(
-    "meeting_notes.docx",
-    "me",
-    635 * 1024, // 620 KB
-    new Date("2025-05-20T10:32:39"),
-    false
-  ),
-];
+/**
+ * Get files from the backend database based on filter.
+ */
+async function loadOwnedFiles() {
+  try {
+    const res = await fetch("/api/get-files", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: localStorage.getItem("uid"),
+        token: localStorage.getItem("token"),
+      }),
+    });
+
+    if (!res.ok) {
+      const emsg = await res.text();
+      showErrorInFilesList(`Server error: ${emsg || "Unknown error occurred"}`);
+      return [];
+    }
+
+    if (res.status === 204) {
+      // No files found
+      return [];
+    }
+
+    const data = await res.json();
+
+    // Convert backend files to file objects
+    const ownedFiles = data.files.map((file) => {
+      return mkFile(
+        file.file_name,
+        file.file_type,
+        "me",
+        file.file_size,
+        new Date(file.created_at),
+        file.file_id,
+        file.dek_data,
+        file.iv_file,
+        file.assoc_data_file,
+        false,
+      );
+    });
+
+    return ownedFiles;
+  } catch (error) {
+    showErrorInFilesList("Failed to load files. Please try refreshing the page.");
+    return [];
+  }
+}
+
+/**
+ * Get files shared with the current user from the backend database.
+ */
+async function loadSharedFiles() {
+  try {
+    const res = await fetch("/api/get-files-shared-by-others", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: localStorage.getItem("uid"),
+        token: localStorage.getItem("token"),
+      }),
+    });
+
+    if (!res.ok) {
+      const emsg = await res.text();
+      showErrorInFilesList(`Server error: ${emsg || "Unknown error occurred"}`);
+      return [];
+    }
+
+    if (res.status === 204) {
+      // No files found
+      return [];
+    }
+
+    const data = await res.json();
+
+    // Convert backend files to file objects
+    const sharedFiles = data.files.map((file) => {
+      return mkFile(
+        file.file_name,
+        file.file_type,
+        file.shared_by_username || file.shared_by || "Unknown", // Use username if available, fallback to shared_by
+        file.file_size,
+        new Date(file.created_at),
+        file.file_id,
+        file.dek_data,
+        file.iv_file,
+        file.assoc_data_file,
+        false, // These are shared files, not files we own that are shared
+        file.shared_by_username,
+        file.shared_by,
+      );
+    });
+
+    return sharedFiles;
+  } catch (error) {
+    showErrorInFilesList("Failed to load shared files. Please try refreshing the page.");
+    return [];
+  }
+}
+
+/**
+ * Get files shared by the current user from the backend database.
+ */
+async function loadSharedByMeFiles() {
+  try {
+    const res = await fetch("/api/get-files-shared-by-me", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: localStorage.getItem("uid"),
+        token: localStorage.getItem("token"),
+      }),
+    });
+
+    if (!res.ok) {
+      const emsg = await res.text();
+      showErrorInFilesList(`Server error: ${emsg || "Unknown error occurred"}`);
+      return [];
+    }
+
+    if (res.status === 204) {
+      // No files found
+      return [];
+    }
+
+    const data = await res.json();
+
+    // Convert backend files to file objects
+    const sharedByMeFiles = data.files.map((file) => {
+      return mkFile(
+        file.file_name,
+        file.file_type,
+        "me",
+        file.file_size,
+        new Date(file.created_at),
+        file.file_id,
+        null, // DEK data not included in shared files list
+        null, // IV not included in shared files list
+        null, // Associated data not included in shared files list
+        true, // These are files we own that are shared
+        null,
+        null,
+        file.shares, // Add shares information
+      );
+    });
+
+    return sharedByMeFiles;
+  } catch (error) {
+    showErrorInFilesList("Failed to load shared files. Please try refreshing the page.");
+    return [];
+  }
+}
+
+/**
+ * Show error message in the files list area
+ */
+function showErrorInFilesList(message) {
+  const filesList = fromId("files-list");
+  filesList.innerHTML = `
+    <tr>
+      <td colspan="6" class="no-files-message error-message">${message}</td>
+    </tr>
+  `;
+}
 
 /********************************************************
  / Main Application Logic
 /********************************************************/
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  let ownedFiles = [];
+  let sharedFiles = [];
+  let sharedByMeFiles = [];
+
   const filterButtons = queryAll(".filter-btn");
   const filesList = fromId("files-list");
   const uploadBtn = fromId("upload-file-btn");
@@ -214,7 +438,7 @@ document.addEventListener("DOMContentLoaded", () => {
       filterButtons.forEach((btn) => btn.classList.remove("filter-btn--active"));
       btn.classList.add("filter-btn--active");
 
-      displayFiles();
+      displayFiles(true);
     });
   });
 
@@ -224,23 +448,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /**
    * Display files based on current filter.
+   *
+   * @param {boolean} update Whether to update the file list
    */
-  function displayFiles() {
+  async function displayFiles(update) {
     let filFiles = [];
 
     switch (curFilter) {
       case "owned":
-        filFiles = ALL_FILES.filter((file) => file.isOwned() && !file.shared);
+        ownedFiles = update ? await loadOwnedFiles() : ownedFiles;
+        filFiles = ownedFiles.filter((file) => !file.shared);
         break;
       case "shared-by-me":
-        filFiles = ALL_FILES.filter((file) => file.isOwned() && file.shared);
+        sharedByMeFiles = update ? await loadSharedByMeFiles() : sharedByMeFiles;
+        // Also load owned files if not already loaded, for encryption data
+        if (ownedFiles.length === 0 && update) {
+          ownedFiles = await loadOwnedFiles();
+        }
+        filFiles = sharedByMeFiles;
         break;
       case "shared-by-others":
-        filFiles = ALL_FILES.filter((file) => !file.isOwned());
-        break;
-      case "all":
-      default:
-        filFiles = ALL_FILES;
+        sharedFiles = update ? await loadSharedFiles() : sharedFiles;
+        filFiles = sharedFiles;
         break;
     }
 
@@ -249,13 +478,24 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Reset file list HTML
     filesList.innerHTML = "";
 
     // Generate HTML for each file
-    filFiles.forEach((file) => {
-      const idx = ALL_FILES.indexOf(file);
-      filesList.innerHTML += genFileRowHTML(file, idx);
+    filFiles.forEach((file, arrayIndex) => {
+      let idx, fileSource;
+
+      if (curFilter === "shared-by-others") {
+        idx = arrayIndex;
+        fileSource = "shared";
+      } else if (curFilter === "shared-by-me") {
+        idx = arrayIndex;
+        fileSource = "shared-by-me";
+      } else {
+        idx = ownedFiles.indexOf(file);
+        fileSource = "owned";
+      }
+
+      filesList.innerHTML += genFileRowHTML(file, idx, fileSource);
     });
 
     // Attach event listeners to buttons
@@ -265,28 +505,41 @@ document.addEventListener("DOMContentLoaded", () => {
   /**
    * Generate HTML for a file row.
    *
-   * @param {FileObj} file The file object
-   * @param {number} idx The index in the ALL_FILES array
+   * @param {Object} file The file object
+   * @param {number} idx The index in the allFiles array
+   * @param {string} fileSource Whether this is an "owned", "shared", or "shared-by-me" file
    * @returns {string} HTML for the file row
    */
-  function genFileRowHTML(file, idx) {
-    const isOwned = file.isOwned();
+  function genFileRowHTML(file, idx, fileSource = "owned") {
+    const isSharedFile = fileSource === "shared";
+    const isSharedByMeFile = fileSource === "shared-by-me";
+
+    let ownerDisplay = "You";
+    if (isSharedFile) {
+      ownerDisplay = file.owner;
+    } else if (isSharedByMeFile) {
+      // For shared-by-me files, always show "Me" as owner
+      ownerDisplay = "You";
+    }
+
+    const actionTemplate = isSharedFile
+      ? HTML_TEMPLATES.sharedFileActions(file)
+      : HTML_TEMPLATES.ownedFileActions(file);
 
     return `
-      <tr data-file-index="${idx}" class="${!isOwned ? "shared-file-row" : ""}">
+      <tr data-file-index="${idx}" data-file-source="${fileSource}">
         <td>
           <div class="file-name">
             ${file.name}
-            ${!isOwned ? HTML_TEMPLATES.sharedWithYouBadge : ""}
-            ${isOwned && file.shared ? HTML_TEMPLATES.sharedByYouBadge : ""}
           </div>
         </td>
-        <td>${isOwned ? "You" : file.owner}</td>
-        <td>${file.fmtSize()}</td>
-        <td>${file.fmtDate()}</td>
+        <td>${ownerDisplay}</td>
+        <td>${fmtFileType(file.type)}</td>
+        <td>${fmtFileSize(file.size)}</td>
+        <td>${fmtFileDate(file.mod)}</td>
         <td>
           <div class="file-actions">
-            ${isOwned ? HTML_TEMPLATES.ownedFileActions(file) : HTML_TEMPLATES.sharedFileActions}
+            ${actionTemplate}
           </div>
         </td>
       </tr>
@@ -296,13 +549,13 @@ document.addEventListener("DOMContentLoaded", () => {
   /**
    * Generate HTML for users with access list.
    *
-   * @param {FileObj} file The file object
+   * @param {Object} file The file object
    * @returns {string} HTML for the users list
    */
   function genUsersListHTML(file) {
-    if (file.isOwned() && file.shared) {
+    if (isFileOwned(file) && file.shared) {
       return HTML_TEMPLATES.sharedUsers.sharedWithOthers;
-    } else if (!file.isOwned()) {
+    } else if (!isFileOwned(file)) {
       return HTML_TEMPLATES.sharedUsers.owner(file.owner);
     } else {
       return HTML_TEMPLATES.sharedUsers.noUsers;
@@ -317,7 +570,8 @@ document.addEventListener("DOMContentLoaded", () => {
     queryAll(".download-btn").forEach((btn) => {
       btn.addEventListener("click", function () {
         const fileIndex = this.closest("tr").getAttribute("data-file-index");
-        downloadFile(fileIndex);
+        const fileSource = this.closest("tr").getAttribute("data-file-source");
+        downloadFile(fileIndex, fileSource);
       });
     });
 
@@ -325,7 +579,8 @@ document.addEventListener("DOMContentLoaded", () => {
     queryAll(".share-btn").forEach((btn) => {
       btn.addEventListener("click", function () {
         const fileIndex = this.closest("tr").getAttribute("data-file-index");
-        openShareModal(fileIndex);
+        const fileSource = this.closest("tr").getAttribute("data-file-source");
+        openShareModal(fileIndex, fileSource);
       });
     });
 
@@ -333,7 +588,8 @@ document.addEventListener("DOMContentLoaded", () => {
     queryAll(".delete-btn").forEach((btn) => {
       btn.addEventListener("click", function () {
         const fileIndex = this.closest("tr").getAttribute("data-file-index");
-        deleteFile(fileIndex);
+        const fileSource = this.closest("tr").getAttribute("data-file-source");
+        deleteFile(fileIndex, fileSource);
       });
     });
   }
@@ -408,8 +664,47 @@ document.addEventListener("DOMContentLoaded", () => {
    / File Operations
   /********************************************************/
 
-  function downloadFile(fileIndex) {
-    const file = ALL_FILES[fileIndex];
+  function downloadFile(fileIndex, fileSource = "owned") {
+    let file;
+
+    if (fileSource === "shared") {
+      file = sharedFiles[fileIndex];
+    } else if (fileSource === "shared-by-me") {
+      file = sharedByMeFiles[fileIndex];
+
+      // For shared-by-me files, we need to get the encryption data from owned files
+      // since the shared files list doesn't include this information
+      const ownedFile = ownedFiles.find((ownedFile) => ownedFile.fileId === file.fileId);
+      if (ownedFile) {
+        // Copy encryption data from the owned file
+        file.dekData = ownedFile.dekData;
+        file.ivFile = ownedFile.ivFile;
+        file.assocDataFile = ownedFile.assocDataFile;
+      } else {
+        // If we can't find the owned file, we need to load owned files first
+        notify("Loading file details...", "info");
+        loadOwnedFiles().then((loadedOwnedFiles) => {
+          ownedFiles = loadedOwnedFiles;
+          const ownedFile = ownedFiles.find((ownedFile) => ownedFile.fileId === file.fileId);
+          if (ownedFile) {
+            file.dekData = ownedFile.dekData;
+            file.ivFile = ownedFile.ivFile;
+            file.assocDataFile = ownedFile.assocDataFile;
+            proceedWithDownload(file);
+          } else {
+            notify("Error: Could not find file encryption details.", "error");
+          }
+        });
+        return;
+      }
+    } else {
+      file = ownedFiles[fileIndex];
+    }
+
+    proceedWithDownload(file);
+  }
+
+  function proceedWithDownload(file) {
     fileToDownload = file;
 
     dlModal.classList.add("modal--active");
@@ -426,41 +721,161 @@ document.addEventListener("DOMContentLoaded", () => {
     fromId("download-password").focus();
   }
 
-  function openShareModal(fileIndex) {
+  function openShareModal(fileIndex, fileSource = "owned") {
     curFileIndex = fileIndex;
-    const file = ALL_FILES[fileIndex];
+    let file;
+
+    if (fileSource === "shared") {
+      file = sharedFiles[fileIndex];
+    } else if (fileSource === "shared-by-me") {
+      file = sharedByMeFiles[fileIndex];
+    } else {
+      file = ownedFiles[fileIndex];
+    }
+
+    // Only allow sharing of owned files and files shared by me
+    if (fileSource === "shared") {
+      notify("You cannot share files that are shared with you.", "error");
+      return;
+    }
 
     // Set file name in modal
     fromId("share-file-name").textContent = file.name;
 
-    // Display users with access
-    const usersListElement = fromId("users-with-access");
-    usersListElement.innerHTML = genUsersListHTML(file);
+    // Clear form
+    clearShareForm();
 
-    // Add event listeners to revoke buttons if present
-    if (file.isOwned() && file.shared) {
-      document.querySelectorAll(".revoke-btn").forEach((btn) => {
-        btn.addEventListener("click", function () {
-          const username = this.parentElement.querySelector(".username").textContent.trim();
-          revokeAccess(username);
-        });
-      });
-    }
-
-    // Show share form only if user is the owner
-    const shareForm = fromId("share-form");
-    if (file.isOwned()) {
-      shareForm.style.display = "block";
+    // Show current users if this is a shared-by-me file
+    if (fileSource === "shared-by-me" && file.shares && file.shares.length > 0) {
+      populateCurrentUsers(file.shares);
     } else {
-      shareForm.style.display = "none";
+      hideCurrentUsers();
     }
 
     // Show the modal
     shareModal.classList.add("modal--active");
+
+    // Re-initialize password toggles for the share modal
+    setupPasswordToggles();
   }
 
-  function deleteFile(fileIndex) {
-    const file = ALL_FILES[fileIndex];
+  // Function to clear share form
+  function clearShareForm() {
+    // Clear username input
+    const usernameInput = fromId("share-username");
+    if (usernameInput) {
+      usernameInput.value = "";
+    }
+
+    // Clear file password input
+    const passwordInput = fromId("share-file-password");
+    if (passwordInput) {
+      passwordInput.value = "";
+    }
+
+    // Clear key file inputs
+    const x25519FileInput = fromId("x25519-key-file");
+    const ed25519FileInput = fromId("ed25519-key-file");
+    if (x25519FileInput) x25519FileInput.value = "";
+    if (ed25519FileInput) ed25519FileInput.value = "";
+
+    // Clear key text areas
+    const x25519TextInput = fromId("x25519-key-text");
+    const ed25519TextInput = fromId("ed25519-key-text");
+    if (x25519TextInput) x25519TextInput.value = "";
+    if (ed25519TextInput) ed25519TextInput.value = "";
+
+    // Clear file name displays
+    const x25519FileName = fromId("x25519-file-name");
+    const ed25519FileName = fromId("ed25519-file-name");
+    if (x25519FileName) x25519FileName.textContent = "";
+    if (ed25519FileName) ed25519FileName.textContent = "";
+
+    // Clear all error messages
+    const errors = ["share-username-error", "share-file-password-error", "x25519-key-error", "ed25519-key-error"];
+    errors.forEach((errorId) => {
+      const errorElement = fromId(errorId);
+      if (errorElement) {
+        errorElement.textContent = "";
+        errorElement.classList.remove("form__error--visible");
+      }
+    });
+  }
+
+  // Function to set up share form file handlers
+  function setupShareFormFileHandlers() {
+    // X25519 key file handler
+    const x25519FileInput = fromId("x25519-key-file");
+    const x25519TextInput = fromId("x25519-key-text");
+    const x25519FileName = fromId("x25519-file-name");
+
+    if (x25519FileInput) {
+      x25519FileInput.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          try {
+            const content = await file.text();
+            x25519TextInput.value = content;
+            x25519FileName.textContent = file.name;
+          } catch (error) {
+            fromId("x25519-key-error").textContent = "Error reading file";
+            fromId("x25519-key-error").classList.add("form__error--visible");
+          }
+        }
+      });
+    }
+
+    // Ed25519 key file handler
+    const ed25519FileInput = fromId("ed25519-key-file");
+    const ed25519TextInput = fromId("ed25519-key-text");
+    const ed25519FileName = fromId("ed25519-file-name");
+
+    if (ed25519FileInput) {
+      ed25519FileInput.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          try {
+            const content = await file.text();
+            ed25519TextInput.value = content;
+            ed25519FileName.textContent = file.name;
+          } catch (error) {
+            fromId("ed25519-key-error").textContent = "Error reading file";
+            fromId("ed25519-key-error").classList.add("form__error--visible");
+          }
+        }
+      });
+    }
+
+    // Clear file name when text area is manually edited
+    if (x25519TextInput) {
+      x25519TextInput.addEventListener("input", () => {
+        if (x25519FileName) x25519FileName.textContent = "";
+      });
+    }
+
+    if (ed25519TextInput) {
+      ed25519TextInput.addEventListener("input", () => {
+        if (ed25519FileName) ed25519FileName.textContent = "";
+      });
+    }
+  }
+
+  function deleteFile(fileIndex, fileSource = "owned") {
+    let file;
+
+    if (fileSource === "shared") {
+      file = sharedFiles[fileIndex];
+    } else if (fileSource === "shared-by-me") {
+      file = sharedByMeFiles[fileIndex];
+    } else {
+      file = ownedFiles[fileIndex];
+    }
+
+    // Only allow deletion of owned files and files shared by me
+    if (fileSource === "shared") {
+      notify("You cannot delete files that are shared with you.", "error");
+      return;
+    }
 
     // If the file is shared, show a special confirmation
     if (file.shared) {
@@ -478,16 +893,49 @@ document.addEventListener("DOMContentLoaded", () => {
           }
 
           // Wait for animation to complete before removing from data
-          setTimeout(() => {
-            // TODO: Delete file from database
+          setTimeout(async () => {
+            try {
+              // Call the delete endpoint
+              const res = await fetch("/api/delete-file", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  fileName: file.name,
+                  userId: localStorage.getItem("uid"),
+                  token: localStorage.getItem("token"),
+                }),
+              });
 
-            ALL_FILES.splice(fileIndex, 1);
-            displayFiles();
+              if (!res.ok) {
+                const emsg = await res.text();
+                notify(`Failed to delete file: ${emsg || "Unknown error occurred"}`, "error");
+                // Restore the file row visibility on error
+                if (fileRow) {
+                  fileRow.style.opacity = "1";
+                  fileRow.style.transform = "translateX(0)";
+                }
+                return;
+              }
 
-            // Show notification
-            notify(`"${file.name}" has been permanently deleted and all shared access has been revoked.`, "success");
+              // Remove from local data and refresh display
+              ownedFiles.splice(fileIndex, 1);
+              displayFiles(true);
+
+              // Show notification
+              notify(`"${file.name}" has been permanently deleted and all shared access has been revoked.`, "success");
+            } catch (error) {
+              console.error("Error deleting file:", error);
+              notify(`Failed to delete file: ${error.message}`, "error");
+              // Restore the file row visibility on error
+              if (fileRow) {
+                fileRow.style.opacity = "1";
+                fileRow.style.transform = "translateX(0)";
+              }
+            }
           }, 500); // Match transition duration
-        }
+        },
       );
     } else {
       // Standard confirmation for non-shared files
@@ -503,23 +951,208 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // Wait for animation to complete before removing from data
-        setTimeout(() => {
-          // TODO: Delete file from database
-          ALL_FILES.splice(fileIndex, 1);
-          displayFiles();
+        setTimeout(async () => {
+          try {
+            console.log("Deleting file:", file.name);
+            // Call the delete endpoint
+            const res = await fetch("/api/delete-file", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                fileName: file.name,
+                userId: localStorage.getItem("uid"),
+                token: localStorage.getItem("token"),
+              }),
+            });
 
-          // Show notification
-          notify(`"${file.name}" has been permanently deleted.`, "success");
+            if (!res.ok) {
+              const emsg = await res.text();
+              notify(`Failed to delete file: ${emsg || "Unknown error occurred"}`, "error");
+              // Restore the file row visibility on error
+              if (fileRow) {
+                fileRow.style.opacity = "1";
+                fileRow.style.transform = "translateX(0)";
+              }
+              return;
+            }
+
+            // Remove from local data and refresh display
+            ownedFiles.splice(fileIndex, 1);
+            displayFiles(true);
+
+            // Show notification
+            notify(`"${file.name}" has been permanently deleted.`, "success");
+          } catch (error) {
+            console.error("Error deleting file:", error);
+            notify(`Failed to delete file: ${error.message}`, "error");
+            // Restore the file row visibility on error
+            if (fileRow) {
+              fileRow.style.opacity = "1";
+              fileRow.style.transform = "translateX(0)";
+            }
+          }
         }, 500); // Match transition duration
       });
     }
   }
 
-  function revokeAccess(username) {
-    showCustomConfirm(`Are you sure you want to revoke access for ${username}?`, () => {
-      // TODO: Update file access permissions
-      notify(`Access revoked for ${username}`, "success");
-      shareModal.classList.remove("modal--active");
+  function revokeAccess(shareId, username) {
+    showCustomConfirm(`Are you sure you want to revoke access for ${username}?`, async () => {
+      try {
+        // Get the current file being shared
+        let file;
+        if (curFilter === "shared-by-me") {
+          file = sharedByMeFiles[curFileIndex];
+        } else {
+          file = ownedFiles[curFileIndex];
+        }
+
+        if (!file) {
+          notify("Error: Unable to identify the file. Please try again.", "error");
+          return;
+        }
+
+        const requestData = {
+          userId: localStorage.getItem("uid"),
+          token: localStorage.getItem("token"),
+          fileId: file.file_id,
+          username: username,
+        };
+
+        console.log("Revoking access with data:", { ...requestData, token: "[REDACTED]" });
+
+        const response = await fetch("/api/revoke", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestData),
+        });
+
+        if (response.ok) {
+          notify(`Access revoked for ${username}`, "success");
+
+          // Refresh the files list to update share status
+          await displayFiles(true);
+
+          // Update the current users list in the modal
+          const updatedFile = await getCurrentFileData();
+          if (updatedFile && updatedFile.shares) {
+            populateCurrentUsers(updatedFile.shares);
+          } else {
+            hideCurrentUsers();
+          }
+        } else {
+          const errorText = await response.text();
+          console.error("Revoke API error:", { status: response.status, error: errorText });
+          notify(`Failed to revoke access: ${errorText}`, "error");
+        }
+      } catch (error) {
+        console.error("Error revoking access:", error);
+        notify("Failed to revoke access. Please try again.", "error");
+      }
+    });
+  }
+
+  // Helper function to get current file data after operations
+  async function getCurrentFileData() {
+    try {
+      let file;
+      if (curFilter === "shared-by-me") {
+        file = sharedByMeFiles[curFileIndex];
+      } else {
+        file = ownedFiles[curFileIndex];
+      }
+
+      // Re-fetch the shared-by-me files to get updated share information
+      const response = await fetch("/api/files-shared-by-me", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: localStorage.getItem("uid"),
+          token: localStorage.getItem("token"),
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Find the current file in the updated data
+        const updatedFile = data.files.find((f) => f.file_id === file.file_id);
+        return updatedFile;
+      }
+    } catch (error) {
+      console.error("Error getting current file data:", error);
+    }
+    return null;
+  }
+
+  // Function to populate current users in share modal
+  function populateCurrentUsers(shares) {
+    const currentUsersSection = fromId("share-form-current-users");
+    const currentUsersList = fromId("current-users-list");
+
+    console.log("Populating current users with shares:", shares);
+
+    if (shares && shares.length > 0) {
+      let usersHTML = "";
+      shares.forEach((share) => {
+        console.log("Adding share for user:", share.username, "with shareId:", share.share_id);
+        usersHTML += `
+          <div class="user-item">
+            <div class="username">
+              <i class="fas fa-user"></i>
+              ${share.username}
+            </div>
+            <button type="button" class="revoke-btn" data-share-id="${share.share_id}" data-username="${share.username}">
+              <i class="fas fa-times"></i> Revoke
+            </button>
+          </div>
+        `;
+      });
+
+      currentUsersList.innerHTML = usersHTML;
+      currentUsersSection.style.display = "block";
+
+      // Attach revoke button listeners
+      attachRevokeListeners();
+    } else {
+      console.log("No shares found, hiding current users section");
+      hideCurrentUsers();
+    }
+  }
+
+  // Function to hide current users section
+  function hideCurrentUsers() {
+    const currentUsersSection = fromId("share-form-current-users");
+    currentUsersSection.style.display = "none";
+  }
+
+  // Function to attach event listeners to revoke buttons
+  function attachRevokeListeners() {
+    const revokeButtons = queryAll(".revoke-btn");
+    console.log(`Attaching listeners to ${revokeButtons.length} revoke buttons`);
+
+    revokeButtons.forEach((btn) => {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const shareId = this.getAttribute("data-share-id");
+        const username = this.getAttribute("data-username");
+
+        console.log(`Revoke button clicked for user: ${username}, shareId: ${shareId}`);
+
+        if (!username) {
+          notify("Error: Unable to identify user. Please try again.", "error");
+          return;
+        }
+
+        revokeAccess(shareId, username);
+      });
     });
   }
 
@@ -567,63 +1200,261 @@ document.addEventListener("DOMContentLoaded", () => {
   // Share form submission
   const shareForm = fromId("share-form");
 
-  shareForm.addEventListener("submit", function (e) {
+  shareForm.addEventListener("submit", async function (e) {
     e.preventDefault();
 
+    // Get form values
     const username = fromId("share-username").value;
+    const filePassword = fromId("share-file-password").value;
+    const x25519KeyText = fromId("x25519-key-text").value;
+    const ed25519KeyText = fromId("ed25519-key-text").value;
+    const x25519FileInput = fromId("x25519-key-file");
+    const ed25519FileInput = fromId("ed25519-key-file");
 
-    if (!username) {
-      fromId("share-username-error").textContent = "Please enter a username";
-      document.getElementById("share-username-error").classList.add("form__error--visible");
+    // Clear previous errors
+    const errorElements = [
+      "share-username-error",
+      "share-file-password-error",
+      "x25519-key-error",
+      "ed25519-key-error",
+    ];
+    errorElements.forEach((errorId) => {
+      const errorElement = fromId(errorId);
+      if (errorElement) {
+        errorElement.textContent = "";
+        errorElement.classList.remove("form__error--visible");
+      }
+    });
+
+    // Validate inputs
+    let hasErrors = false;
+
+    if (!username.trim()) {
+      const usernameError = fromId("share-username-error");
+      usernameError.textContent = "Please enter a username";
+      usernameError.classList.add("form__error--visible");
+      hasErrors = true;
+    }
+
+    if (!filePassword.trim()) {
+      const passwordError = fromId("share-file-password-error");
+      passwordError.textContent = "Please enter your file password";
+      passwordError.classList.add("form__error--visible");
+      hasErrors = true;
+    }
+
+    // Check x25519 key (either file or text required)
+    let x25519Key = "";
+    if (x25519FileInput.files.length > 0) {
+      try {
+        x25519Key = await readFileAsText(x25519FileInput.files[0]);
+      } catch (error) {
+        const x25519Error = fromId("x25519-key-error");
+        x25519Error.textContent = "Error reading decryption key file";
+        x25519Error.classList.add("form__error--visible");
+        hasErrors = true;
+      }
+    } else if (x25519KeyText.trim()) {
+      x25519Key = x25519KeyText.trim();
+    } else {
+      const x25519Error = fromId("x25519-key-error");
+      x25519Error.textContent = "Please provide your decryption key";
+      x25519Error.classList.add("form__error--visible");
+      hasErrors = true;
+    }
+
+    // Check ed25519 key (either file or text required)
+    let ed25519Key = "";
+    if (ed25519FileInput.files.length > 0) {
+      try {
+        ed25519Key = await readFileAsText(ed25519FileInput.files[0]);
+      } catch (error) {
+        const ed25519Error = fromId("ed25519-key-error");
+        ed25519Error.textContent = "Error reading signing key file";
+        ed25519Error.classList.add("form__error--visible");
+        hasErrors = true;
+      }
+    } else if (ed25519KeyText.trim()) {
+      ed25519Key = ed25519KeyText.trim();
+    } else {
+      const ed25519Error = fromId("ed25519-key-error");
+      ed25519Error.textContent = "Please provide your signing key";
+      ed25519Error.classList.add("form__error--visible");
+      hasErrors = true;
+    }
+
+    if (hasErrors) {
       return;
     }
 
-    // TODO: Share file with user if not already shared.
-
-    const file = ALL_FILES[curFileIndex];
-
-    // Mark the file as shared
-    if (file) {
-      file.shared = true;
+    const file = ownedFiles[curFileIndex];
+    if (!file) {
+      notify("File not found. Please refresh and try again.", "error");
+      return;
     }
 
-    // Update the file list to reflect changes
-    displayFiles();
+    const uid = localStorage.getItem("uid");
+    const token = localStorage.getItem("token");
 
-    // Clear the form and close the modal
-    this.reset();
-    shareModal.classList.remove("modal--active");
+    if (!uid || !token) {
+      notify("Authentication error. Please log in again.", "error");
+      return;
+    }
 
-    // Show notification
-    notify(`"${file.name}" has been shared with ${username}.`, "success");
+    try {
+      // Disable submit button during request
+      const submitBtn = fromId("share-submit");
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Sharing...";
+      }
+
+      // Prepare the request payload
+      const payload = {
+        fileName: file.name,
+        fileId: file.fileId,
+        userId: uid,
+        token: token,
+        recipient: username.trim(),
+        filePassword: filePassword.trim(),
+        encryptedDEK: file.dekData.encrypted_dek,
+        ivDEK: file.dekData.iv_dek,
+        ivFile: file.ivFile,
+        x25519: x25519Key,
+        ed25519: ed25519Key,
+      };
+
+      const response = await fetch("/api/share-file", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+
+        if (response.status === 404) {
+          // User not found
+          const usernameError = fromId("share-username-error");
+          usernameError.textContent = "User not found. Please check the username and try again.";
+          usernameError.classList.add("form__error--visible");
+        } else if (response.status === 400) {
+          // Bad request - could be invalid keys or other validation error
+          notify(`Invalid request: ${errorText}`, "error");
+        } else {
+          // Other errors
+          notify(`Error sharing file: ${errorText || "Unknown error occurred"}`, "error");
+        }
+        return;
+      }
+
+      const responseData = await response.json();
+
+      // Mark the file as shared
+      if (file) {
+        file.shared = true;
+      }
+
+      // Update the file list to reflect changes
+      displayFiles(true);
+
+      // Clear the form and close the modal
+      clearShareForm();
+      shareModal.classList.remove("modal--active");
+
+      // Show success notification
+      let successMessage = `"${file.name}" has been shared with ${username}.`;
+      if (responseData.tofu_message) {
+        successMessage += ` (${responseData.tofu_message})`;
+      }
+      notify(successMessage, "success");
+    } catch (error) {
+      console.error("Error sharing file:", error);
+      notify("Network error occurred while sharing file. Please try again.", "error");
+    } finally {
+      // Re-enable submit button
+      const submitBtn = fromId("share-submit");
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Share File";
+      }
+    }
   });
 
   const dlForm = fromId("download-form");
   if (dlForm) {
-    dlForm.addEventListener("submit", function (e) {
+    dlForm.addEventListener("submit", async (e) => {
       e.preventDefault();
 
       const filepw = fromId("download-password").value;
       const dlError = fromId("download-modal-password-error");
 
       if (!filepw) {
-        dlError.textContent = "Please enter your Password Encryption Key";
+        dlError.textContent = "Please enter your file password";
         dlError.classList.add("form__error--visible");
         return;
       }
 
-      // TODO: Use the PEK to decrypt the file's DEK
+      if (Object.keys(fileToDownload).length === 0 || !fileToDownload.name || isInvalidSize(fileToDownload.size)) {
+        dlError.classList.add("form__error--visible");
+        dlError.textContent = "Invalid file selected";
+        return;
+      }
 
-      // Close the modal
+      const uid = localStorage.getItem("uid");
+      const token = localStorage.getItem("token");
+
+      if (!uid || !token) {
+        throw new Error("User credentials have been cleared. Please log out & back in again.");
+      }
+
+      const payload = {
+        fileName: fileToDownload.name,
+        filePassword: filepw,
+        userId: uid,
+        token: token,
+        encryptedDEK: fileToDownload.dekData.encrypted_dek,
+        ivDEK: fileToDownload.dekData.iv_dek,
+        ivFile: fileToDownload.ivFile,
+      };
+
+      try {
+        // Send to server for encryption
+        const res = await fetch("/api/decrypt-file", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          const emsg = await res.text();
+          throw new Error(emsg || "Error decrypting file");
+        }
+
+        await res.blob().then((blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = fileToDownload.name;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        });
+      } catch (error) {
+        dlError.textContent = error.message || "Unknown error occurred while downloading file";
+        dlError.classList.add("form__error--visible");
+        return;
+      }
+
       dlModal.classList.remove("modal--active");
-
-      // Reset the form
-      this.reset();
+      dlForm.reset();
 
       if (fileToDownload) {
         notify(`Downloading "${fileToDownload.name}"...`, "info");
 
-        // Simulate download with decryption
         setTimeout(() => {
           notify(`"${fileToDownload.name}" downloaded and decrypted successfully.`, "success");
           fileToDownload = null;
@@ -642,11 +1473,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // Upload form
   const uploadForm = fromId("upload-form");
   if (uploadForm) {
-    uploadForm.addEventListener("submit", async function (e) {
+    uploadForm.addEventListener("submit", async (e) => {
       e.preventDefault();
 
       const fileInput = fromId("file-upload");
-      const selectedFileDisplay = fromId("selected-file");
+      const selectedFilesDisplay = fromId("selected-files");
       const fileUploadError = fromId("file-upload-error");
       const filepwInput = fromId("upload-file-password");
       const filepwError = fromId("upload-file-password-error");
@@ -658,7 +1489,7 @@ document.addEventListener("DOMContentLoaded", () => {
       filepwError.classList.remove("form__error--visible");
 
       // Validate file selection
-      if (!fileInput.files || fileInput.files.length === 0) {
+      if (!fileInput || fileInput.files.length === 0) {
         fileUploadError.textContent = "Please select file(s) to upload";
         fileUploadError.classList.add("form__error--visible");
         return;
@@ -671,7 +1502,16 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      const file = fileInput.files[0];
+      const files = Array.from(fileInput.files);
+
+      // Validate all files
+      for (const file of files) {
+        if (!file || !file.name || isInvalidSize(file.size)) {
+          fileUploadError.textContent = `Invalid file: ${file?.name || "unknown"}`;
+          fileUploadError.classList.add("form__error--visible");
+          return;
+        }
+      }
 
       const uid = localStorage.getItem("uid");
       const token = localStorage.getItem("token");
@@ -680,66 +1520,66 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error("User credentials have been cleared. Please log out & back in again.");
       }
 
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("fileName", file.name);
-      formData.append("fileType", file.type || file.name.split(".").pop());
-      formData.append("fileSize", file.size.toString());
-      formData.append("filePassword", filepw);
-      formData.append("userId", uid);
-      formData.append("token", token);
-
       try {
-        // const fileBytes = new Uint8Array(await file.arrayBuffer());
-        // const b64file = toBase64(fileBytes);
-
-        // Prepare payload for server
-        // const payload = {
-        //   fileName: file.name,
-        //   fileType: file.type || file.name.split(".").pop(),
-        //   fileSize: file.size,
-        //   fileContent: b64file,
-        //   filePw: filepw,
-        //   userId: uid,
-        //   token: token,
-        // };
-
-        // Send to server for encryption
-        const res = await fetch("/encrypt-file", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!res.ok) {
-          const emsg = await res.text();
-          throw new Error(emsg || "Error encrypting file");
+        // Disable the submit button during upload
+        const submitBtn = fromId("upload-submit");
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = `Uploading ${files.length} file${files.length > 1 ? "s" : ""}...`;
         }
 
-        const data = await res.json();
+        // Upload each file separately
+        const uploadPromises = files.map(async (file) => {
+          const ftype = file.name.includes(".") ? file.name.split(".").pop() : "" || "unknown";
 
-        console.log("Payload from server encryption:", data);
-        // TODO: send to backend via fetch
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("fileType", ftype);
+          formData.append("filePassword", filepw);
+          formData.append("userId", uid);
+          formData.append("token", token);
 
-        // Create a new File instance
-        const newFile = new FileObj(file.name, "me", file.size, new Date(), false);
+          const res = await fetch("/api/encrypt-file", {
+            method: "POST",
+            body: formData,
+          });
 
-        ALL_FILES.unshift(newFile);
+          if (!res.ok) {
+            const emsg = await res.text();
+            throw new Error(`Error uploading ${file.name}: ${emsg || "Unknown error"}`);
+          }
 
-        // Clear the form and selected file display
-        this.reset();
-        selectedFileDisplay.textContent = "";
-        selectedFileDisplay.classList.remove("has-file");
+          return res.json();
+        });
+
+        // Wait for all uploads to complete
+        await Promise.all(uploadPromises);
+
+        // Clear the form and selected files display
+        clearSelectedFiles();
 
         // Close the modal and refresh the display
         uploadModal.classList.remove("modal--active");
-        displayFiles();
+        uploadForm.reset();
+        displayFiles(true);
 
         // Show notification
-        notify(`"${newFile.name}" has been encrypted and uploaded successfully.`, "success");
+        const fileNames = files.map((f) => f.name).join(", ");
+        if (files.length === 1) {
+          notify(`"${fileNames}" has been encrypted and uploaded successfully.`, "success");
+        } else {
+          notify(`${files.length} files have been encrypted and uploaded successfully.`, "success");
+        }
       } catch (error) {
-        console.error("Error during file encryption:", error);
         filepwError.textContent = error.message || "Unknown error";
         filepwError.classList.add("form__error--visible");
+      } finally {
+        // Re-enable the submit button
+        const submitBtn = fromId("upload-submit");
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Upload";
+        }
       }
     });
   }
@@ -748,32 +1588,102 @@ document.addEventListener("DOMContentLoaded", () => {
    / File Upload & Drag-and-Drop
   /********************************************************/
 
+  // Function to clear selected files display
+  const clearSelectedFiles = () => {
+    const selectedFilesDisplay = fromId("selected-files");
+    const fileInput = fromId("file-upload");
+    const fileUploadError = fromId("file-upload-error");
+
+    if (fileInput) {
+      fileInput.value = "";
+    }
+
+    if (selectedFilesDisplay) {
+      selectedFilesDisplay.innerHTML = "";
+    }
+
+    if (fileUploadError) {
+      fileUploadError.textContent = "";
+      fileUploadError.classList.remove("form__error--visible");
+    }
+  };
+
+  // Function to display selected files
+  const displaySelectedFiles = (files) => {
+    const selectedFilesDisplay = fromId("selected-files");
+    if (!selectedFilesDisplay) return;
+
+    selectedFilesDisplay.innerHTML = "";
+
+    Array.from(files).forEach((file, index) => {
+      const fileItem = document.createElement("div");
+      fileItem.className = "selected-file has-file";
+      fileItem.innerHTML = `
+        <div class="selected-file__name">${file.name}</div>
+        <button type="button" class="selected-file__remove" data-file-index="${index}">
+          <i class="fas fa-times"></i>
+        </button>
+      `;
+      selectedFilesDisplay.appendChild(fileItem);
+
+      // Add remove button functionality
+      const removeBtn = fileItem.querySelector(".selected-file__remove");
+      removeBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        removeFileByIndex(index);
+      });
+    });
+  };
+
+  // Function to remove a file by index
+  const removeFileByIndex = (indexToRemove) => {
+    const fileInput = fromId("file-upload");
+    if (!fileInput || !fileInput.files) return;
+
+    // Create a new FileList without the removed file
+    const dt = new DataTransfer();
+    Array.from(fileInput.files).forEach((file, index) => {
+      if (index !== indexToRemove) {
+        dt.items.add(file);
+      }
+    });
+
+    fileInput.files = dt.files;
+
+    // Update the display
+    if (fileInput.files.length === 0) {
+      clearSelectedFiles();
+    } else {
+      displaySelectedFiles(fileInput.files);
+    }
+  };
+
   // Setup drag and drop functionality
   const setupFileDragAndDrop = () => {
     const dropArea = fromId("file-drop-area");
     const fileInput = fromId("file-upload");
-    const selectedFileDisplay = fromId("selected-file");
     const fileUploadError = fromId("file-upload-error");
 
     if (!dropArea || !fileInput) return;
 
     // Handle file selection
-    const handleFileSelection = (file) => {
-      if (!file) return;
+    const handleFileSelection = (files) => {
+      if (!files || files.length === 0) return;
 
       // Clear previous errors
-      fileUploadError.textContent = "";
-      fileUploadError.classList.remove("form__error--visible");
+      if (fileUploadError) {
+        fileUploadError.textContent = "";
+        fileUploadError.classList.remove("form__error--visible");
+      }
 
-      // Show selected file name
-      selectedFileDisplay.textContent = file.name;
-      selectedFileDisplay.classList.add("has-file");
+      // Display selected files
+      displaySelectedFiles(files);
     };
 
     // File input change event
     fileInput.addEventListener("change", (e) => {
-      const file = e.target.files[0];
-      handleFileSelection(file);
+      handleFileSelection(e.target.files);
     });
 
     // Prevent default drag behaviors
@@ -784,7 +1694,7 @@ document.addEventListener("DOMContentLoaded", () => {
           e.preventDefault();
           e.stopPropagation();
         },
-        false
+        false,
       );
     });
 
@@ -795,7 +1705,7 @@ document.addEventListener("DOMContentLoaded", () => {
         () => {
           dropArea.classList.add("drag-over");
         },
-        false
+        false,
       );
     });
 
@@ -806,7 +1716,7 @@ document.addEventListener("DOMContentLoaded", () => {
         () => {
           dropArea.classList.remove("drag-over");
         },
-        false
+        false,
       );
     });
 
@@ -814,20 +1724,34 @@ document.addEventListener("DOMContentLoaded", () => {
     dropArea.addEventListener(
       "drop",
       (e) => {
-        const file = e.dataTransfer.files[0]; // Get only first file
+        const droppedFiles = e.dataTransfer.files;
 
-        if (file) {
-          fileInput.files = e.dataTransfer.files; // Update the file input
-          handleFileSelection(file);
+        if (droppedFiles.length > 0) {
+          // Combine existing files with new dropped files
+          const existingFiles = fileInput.files || [];
+          const dt = new DataTransfer();
+
+          // Add existing files
+          Array.from(existingFiles).forEach((file) => {
+            dt.items.add(file);
+          });
+
+          // Add new dropped files
+          Array.from(droppedFiles).forEach((file) => {
+            dt.items.add(file);
+          });
+
+          fileInput.files = dt.files;
+          handleFileSelection(fileInput.files);
         }
       },
-      false
+      false,
     );
 
     // Click on drop area should trigger file input
     dropArea.addEventListener("click", (e) => {
       // Don't trigger if clicking on the Browse button (it has its own handler)
-      if (!e.target.classList.contains("file-select-button")) {
+      if (!e.target.classList.contains("file-select-button") && !e.target.closest(".selected-file")) {
         fileInput.click();
       }
     });
@@ -838,21 +1762,88 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /********************************************************
    / Utilities & Event Handlers
-  /********************************************************/
-
-  // Function to initialize password toggles
+  /********************************************************/ // Function to initialize password toggles
   const setupPasswordToggles = () => {
+    // Get all password toggles that are currently in the DOM
     const pwToggles = document.querySelectorAll(".form__password-toggle");
-    pwToggles.forEach((toggle) => regPwToggle(toggle));
+
+    pwToggles.forEach((toggle) => {
+      // Check if this toggle already has an event listener
+      if (!toggle.hasAttribute("data-pw-initialized")) {
+        regPwToggle(toggle);
+        toggle.setAttribute("data-pw-initialized", "true");
+      }
+    });
   };
 
   // Initial setup of password toggles
   setupPasswordToggles();
 
+  // Setup share form file handlers
+  setupShareFormFileHandlers();
+
+  // Function to reset upload modal state (only for page load, not modal close)
+  const resetUploadModalOnLoad = () => {
+    const fileInput = fromId("file-upload");
+    const selectedFilesDisplay = fromId("selected-files");
+    const fileUploadError = fromId("file-upload-error");
+    const filepwInput = fromId("upload-file-password");
+    const filepwError = fromId("upload-file-password-error");
+
+    if (fileInput) {
+      fileInput.value = "";
+    }
+
+    if (selectedFilesDisplay) {
+      selectedFilesDisplay.innerHTML = "";
+    }
+
+    // Clear errors
+    if (fileUploadError) {
+      fileUploadError.textContent = "";
+      fileUploadError.classList.remove("form__error--visible");
+    }
+    if (filepwError) {
+      filepwError.textContent = "";
+      filepwError.classList.remove("form__error--visible");
+    }
+
+    // Clear password field
+    if (filepwInput) {
+      filepwInput.value = "";
+    }
+  };
+
+  // Reset upload form on page load to ensure clean state after reload
+  resetUploadModalOnLoad();
+
+  // Check if file input has files on page load (in case of reload) and sync display
+  const syncFileDisplayOnLoad = () => {
+    const fileInput = fromId("file-upload");
+    const selectedFilesDisplay = fromId("selected-files");
+
+    if (fileInput && fileInput.files && fileInput.files.length > 0) {
+      // File input has files but display might not be updated - force clear everything
+      fileInput.value = "";
+      if (selectedFilesDisplay) {
+        selectedFilesDisplay.innerHTML = "";
+      }
+    }
+  };
+
+  // Sync file display on load
+  syncFileDisplayOnLoad();
+
   // Close modal buttons
   closeButtons.forEach((btn) => {
     btn.addEventListener("click", function () {
       const modal = this.closest(".modal");
+
+      // Clear share form if closing share modal
+      if (modal.id === "share-modal") {
+        clearShareForm();
+      }
+
       modal.classList.remove("modal--active");
     });
   });
@@ -860,6 +1851,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // Close modals when click outside
   onClick(window, (e) => {
     if (e.target.classList.contains("modal")) {
+      // Clear share form if closing share modal
+      if (e.target.id === "share-modal") {
+        clearShareForm();
+      }
+
       e.target.classList.remove("modal--active");
     }
   });
@@ -872,5 +1868,18 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Initial display
-  displayFiles();
+  displayFiles(true);
+  console.log("hi");
 });
+
+/**
+ * Utility function to read file as text
+ */
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsText(file);
+  });
+}

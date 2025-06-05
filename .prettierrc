@@ -1,5 +1,8 @@
 {
   "tabWidth": 2,
   "useTabs": false,
-  "printWidth": 140
+  "printWidth": 120,
+  "experimentalTernaries": true,
+  "experimentalOperatorPosition": "start",
+  "trailingComma": "all"
 }

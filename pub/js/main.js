@@ -13,7 +13,8 @@ import { valPassword, valUsername, valEmail } from "./validate.js";
  */
 function openModal(modal) {
   modal.classList.add("modal--active");
-  const focusableElement = modal.querySelector("input") || modal.querySelector("textarea") || modal.querySelector("button");
+  const focusableElement =
+    modal.querySelector("input") || modal.querySelector("textarea") || modal.querySelector("button");
   if (focusableElement) {
     focusableElement.focus();
   }
@@ -179,7 +180,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Close modals when clicking outside / when press Esc
     onKeydown(document, "Escape", () => closeAllModals());
-    onClick(window, (e) => {
+    onClick(document, (e) => {
+      // Check if click is on the modal overlay (background)
       if (e.target === signupModal) {
         closeModal(signupModal);
       }
@@ -188,6 +190,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       if (e.target === privateKeyModal) {
         closeModal(privateKeyModal);
+      }
+      if (e.target === filepwModal) {
+        closeModal(filepwModal);
       }
     });
   }
@@ -201,7 +206,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (isAuthenticated) {
       // Add Files link if not already present
-      const existingFilesLink = document.querySelector(".nav__link.files-link") || document.querySelector('.nav__center a[href$="/files"]');
+      const existingFilesLink =
+        document.querySelector(".nav__link.files-link") || document.querySelector('.nav__center a[href$="/files"]');
 
       if (!existingFilesLink) {
         const filesLink = document.createElement("a");
@@ -302,27 +308,75 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Private key download functionality
   const privateKeyTextarea = fromId("private-key-text");
+  const privateSigningKeyTextarea = fromId("private-signing-key-text");
   const downloadPrivateKeyBtn = fromId("download-private-key");
+  const downloadPrivateSigningKeyBtn = fromId("download-private-signing-key");
+  const copyPrivateKeyBtn = fromId("copy-private-key");
+  const copyPrivateSigningKeyBtn = fromId("copy-private-signing-key");
   const continueToFilesBtn = fromId("continue-to-files");
+
+  // Function to download a file
+  function downloadFile(content, filename) {
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  }
+
+  // Function to copy text to clipboard
+  async function copyToClipboard(text, buttonElement) {
+    try {
+      await navigator.clipboard.writeText(text);
+      const originalText = buttonElement.innerHTML;
+      buttonElement.innerHTML = '<i class="fas fa-check"></i> Copied!';
+      buttonElement.classList.add("form__submit--success");
+
+      setTimeout(() => {
+        buttonElement.innerHTML = originalText;
+        buttonElement.classList.remove("form__submit--success");
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to copy text: ", err);
+    }
+  }
 
   if (downloadPrivateKeyBtn) {
     onClick(downloadPrivateKeyBtn, () => {
       const privateKey = privateKeyTextarea.value;
       if (privateKey) {
-        // Create a blob with the private key content
-        const blob = new Blob([privateKey], { type: "text/plain" });
-        const url = window.URL.createObjectURL(blob);
+        downloadFile(privateKey, "private-decryption-key.txt");
+      }
+    });
+  }
 
-        // Create a temporary download link
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "private-key.pem";
-        document.body.appendChild(a);
-        a.click();
+  if (downloadPrivateSigningKeyBtn) {
+    onClick(downloadPrivateSigningKeyBtn, () => {
+      const privateSigningKey = privateSigningKeyTextarea.value;
+      if (privateSigningKey) {
+        downloadFile(privateSigningKey, "private-signing-key.txt");
+      }
+    });
+  }
 
-        // Cleanup
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+  if (copyPrivateKeyBtn) {
+    onClick(copyPrivateKeyBtn, () => {
+      const privateKey = privateKeyTextarea.value;
+      if (privateKey) {
+        copyToClipboard(privateKey, copyPrivateKeyBtn);
+      }
+    });
+  }
+
+  if (copyPrivateSigningKeyBtn) {
+    onClick(copyPrivateSigningKeyBtn, () => {
+      const privateSigningKey = privateSigningKeyTextarea.value;
+      if (privateSigningKey) {
+        copyToClipboard(privateSigningKey, copyPrivateSigningKeyBtn);
       }
     });
   }
@@ -334,8 +388,13 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Function to show private key modal
-  function showPrivateKeyModal(privateKey) {
-    privateKeyTextarea.value = privateKey;
+  function showPrivateKeyModal(privateKey, privateSigningKey) {
+    const base64PrivateKey = privateKey || "";
+    const base64PrivateSigningKey = privateSigningKey || "";
+
+    privateKeyTextarea.value = base64PrivateKey;
+    privateSigningKeyTextarea.value = base64PrivateSigningKey;
+
     closeAllModals();
     openModal(privateKeyModal);
   }
@@ -438,7 +497,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       payload.filePassword = filepw;
 
-      const res = await fetch("/register", {
+      const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -474,9 +533,13 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const data = await res.json();
-      console.log("Registration successful:", data);
-
+      console.log("Registration response data:", data);
       const privateKey = data.privateKey;
+      const privateSigningKey = data.privateSigningKey;
+      console.log("Extracted keys:", {
+        privateKey: privateKey ? "present" : "missing",
+        privateSigningKey: privateSigningKey ? "present" : "missing",
+      });
 
       // For demo purposes, set the user as authenticated
       localStorage.setItem("uid", data.uid);
@@ -496,7 +559,7 @@ document.addEventListener("DOMContentLoaded", () => {
         submitBtn.innerHTML = prevMsg;
         filepwForm.reset();
         closeAllModals();
-        showPrivateKeyModal(privateKey);
+        showPrivateKeyModal(privateKey, privateSigningKey);
       }, 1500);
 
       // Clear stored signup data after successful registration
@@ -516,22 +579,15 @@ document.addEventListener("DOMContentLoaded", () => {
       const uname = fromId("signin-username").value;
       const pw = fromId("signin-password").value;
 
-      let isValid = true;
-
-      // Username validation
       const unameemsg = valUsername(uname);
       if (unameemsg) {
         showErr("signin-username-error", unameemsg);
-        isValid = false;
+        return;
       }
 
       // Validation for password format ???
       if (!pw) {
         showErr("signin-password-error", "Please enter your password");
-        isValid = false;
-      }
-
-      if (!isValid) {
         return;
       }
 
@@ -540,28 +596,24 @@ document.addEventListener("DOMContentLoaded", () => {
         password: pw,
       };
 
-      const res = await fetch("/login", {
+      const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
+      if (res.status == 401) {
+        showErr("signin-password-error", "Invalid password");
+        return;
+      }
+
       if (!res.ok) {
-        const emsg = await res.text();
-
-        if (emsg.startsWith("Username") || emsg.startsWith("User")) {
-          showErr("signin-username-error", emsg);
-          return;
-        }
-
-        showErr("signin-password-error", emsg);
+        const id = res.status == 404 ? "signin-username-error" : "signin-password-error";
+        await res.text().then((emsg) => showErr(id, emsg));
         return;
       }
 
       const data = await res.json();
-      console.log("Login successful:", data);
-
-      // TODO: Handle success case
 
       // For demo purposes, set the user as authenticated
       localStorage.setItem("uid", data.uid);

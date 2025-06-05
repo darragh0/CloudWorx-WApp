@@ -155,21 +155,51 @@ async function hashPw(pw, memCost, timeCost, threads, salt = null) {
 /**
  * Generate Ed25519 keypair in PEM format.
  *
- * @returns {ED25519KeyPair} Object containing private and public keys in PEM format
+ * @param {"x25519" | "ed25519"} type Key type
+ * @param {boolean} [pem="pem"] Whether to return keys in PEM format
+ * @returns {KeyPair} Object containing private and public keys in PEM format
  */
-function genED25519Pair() {
-  const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519", {
+function genKeyPair(type, format = "pem") {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync(type, {
     publicKeyEncoding: {
       type: "spki",
-      format: "pem",
+      format: format,
     },
     privateKeyEncoding: {
       type: "pkcs8",
-      format: "pem",
+      format: format,
     },
   });
 
   return { publicKey, privateKey };
 }
 
-export { genIVDEK, genIVFile, toBase64, fromBase64, encryptData, decryptData, genKEK, hashPw, genED25519Pair };
+function deriveSecret(privateKey, publicKeyPEM, privateKeyFormat) {
+  privateKey = crypto.createPrivateKey({
+    key: privateKey,
+    type: "pkcs8",
+    format: privateKeyFormat,
+  });
+  const publicKey = crypto.createPublicKey(publicKeyPEM);
+  return crypto.diffieHellman({ privateKey, publicKey });
+}
+
+function hashSecrets(secret1, secret2) {
+  const hash = crypto.createHash("sha256");
+  hash.update(Buffer.concat([secret1, secret2]));
+  return hash.digest();
+}
+
+export {
+  hashSecrets,
+  deriveSecret,
+  genIVDEK,
+  genIVFile,
+  toBase64,
+  fromBase64,
+  encryptData,
+  decryptData,
+  genKEK,
+  hashPw,
+  genKeyPair,
+};

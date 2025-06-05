@@ -7,381 +7,252 @@ import dotenv from "dotenv";
 import fs from "fs";
 import { exec } from "child_process";
 import { promisify } from "util";
-import path, { resolve, join } from "path";
+import { resolve, join } from "path";
+import { Logger } from "./logging.js";
 
 /**
- * Format a template string with values.
+ * Short-hand for sending GET request via fetch.
  *
- * @param {TStr} tStr Template string with placeholders like {key}
- * @param {TStrValues} values Keys to replace with their values
- * @returns {string} Formatted string with values replaced
- */
-function fmtTstr(tStr, values) {
-  return tStr.replace(/{(\w+)}/g, (_, key) => values[key] ?? "");
-}
-
-/** Logger class */
-class Logger {
-  /** @type {LoggerMap} */
-  static _loggers = new Map();
-
-  /** @type {Object.Map<LogLevel, number>} */
-  static _levelMap = {
-    TRA: 0,
-    DEB: 1,
-    INF: 2,
-    WAR: 3,
-    ERR: 4,
-    CRI: 5,
-  };
-
-  /**
-   * Get or create a named logger.
-   *
-   * @param {string} name Name of the logger
-   * @returns {Logger} Logger instance if exists
-   * @throws {Error} If logger with given name does not exist
-   */
-  static get(name) {
-    if (!Logger._loggers.has(name)) {
-      throw new Error(`Logger with name "${name}" does not exist`);
-    }
-    return Logger._loggers.get(name);
-  }
-
-  /**
-   * Create a new Logger instance.
-   *
-   * @param {string} name Name of the logger (module or app name)
-   * @param {LoggerParams} [fmtParams={}] Formatting parameters (optional)
-   * @param {LogLevel} [level="debug"] Log level to set
-   * @param {number} [flushThreshold=1000] No. of messages before flushing output (for files)
-   * @param {number} [rotateAtBytes=5 * 1024 * 1024] Rotate log file at this size (in bytes)
-   * @returns {Logger}
-   */
-  constructor(name, fmtParams = {}, level = "DEB", flushThreshold = 1000, rotateAtBytes = 5 * 1024 * 1024) {
-    if (!("name" in fmtParams)) {
-      fmtParams.name = "\x1b[2;93m({name})\x1b[0m";
-    } else if (fmtParams.name === "plain") {
-      fmtParams.name = "{name}";
-    }
-
-    if (!("date" in fmtParams)) {
-      fmtParams.date = "\x1b[2;94m[{date}]\x1b[0m";
-    } else if (fmtParams.date === "plain") {
-      fmtParams.date = "{date}";
-    }
-
-    if (!("level" in fmtParams)) {
-      fmtParams.level = "[{level}]";
-    } else if (fmtParams.level === "plain") {
-      fmtParams.level = "{level}";
-    }
-
-    if (!("dateFmt" in fmtParams)) fmtParams.dateFmt = "pretty";
-    if (!("jsonl" in fmtParams)) fmtParams.jsonl = false;
-    if (!("colorLvl" in fmtParams)) fmtParams.colorLvl = true;
-    if (!("sep" in fmtParams)) fmtParams.sep = " ";
-    if (!("msgPre" in fmtParams)) fmtParams.msgPre = "::";
-
-    if (!("out" in fmtParams)) {
-      fmtParams.out = "stdout";
-    } else if (fmtParams.out !== "stdout" && fmtParams.out !== "stderr") {
-      const dir = path.dirname(fmtParams.out);
-      fs.mkdirSync(dir, { recursive: true });
-
-      let suffix = 1;
-      let newFile = fmtParams.out;
-      while (fs.existsSync((newFile = `${fmtParams.out}.jsonl.${suffix}`))) {
-        suffix++;
-      }
-
-      let prevFile = `${fmtParams.out}.jsonl.${suffix - 1}`;
-      if (fs.existsSync(prevFile) && fs.statSync(prevFile).size >= this.rotateAtBytes) {
-        fmtParams.out = newFile;
-      } else if (fs.existsSync(prevFile)) {
-        fmtParams.out = prevFile;
-      } else {
-        fmtParams.out = newFile;
-      }
-    }
-
-    if (Logger._loggers.has(name)) {
-      throw new Error(`Logger with name "${name}" already exists`);
-    }
-
-    Logger._loggers.set(name, this);
-    this.name = name;
-    this.level = Logger._levelMap[level];
-    this.flushThreshold = flushThreshold;
-    this.fmtParams = fmtParams;
-    this.msgCount = 0;
-    this.rotateAtBytes = rotateAtBytes;
-    this.msgBuf = [];
-    this.links = [];
-
-    this._fmtName = null;
-    this._fmtDate = null;
-    this._fmtLevel = null;
-    this._fmtAll = null;
-
-    this._createLogFns();
-  }
-
-  /**
-   * Set the log level for this logger.
-   *
-   * @param {LogLevel} level Log level to set
-   */
-  setLogLevel(level) {
-    this.level = Logger._levelMap[level];
-  }
-
-  /**
-   * Create format functions based on the provided formatting parameters.
-   * This is called when the logger is created or when a log message is formatted.
-   *
-   * @private
-   */
-  _createLogFns() {
-    if (this.fmtParams.name) this._fmtName = () => fmtTstr(this.fmtParams.name, { name: this.name });
-
-    if (this.fmtParams.date) {
-      if (this.fmtParams.dateFmt === "iso") {
-        this._fmtDate = () => fmtTstr(this.fmtParams.date, { date: new Date().toISOString() });
-      } else {
-        this._fmtDate = () =>
-          fmtTstr(this.fmtParams.date, {
-            date: new Date().toISOString().replace("T", " ").replace("Z", "").split(".")[0],
-          });
-      }
-    }
-
-    if (this.fmtParams.level) {
-      if (this.fmtParams.colorLvl) {
-        this._fmtLevel = (level, color) => `\x1b[${color}m${fmtTstr(this.fmtParams.level, { level })}\x1b[0m`;
-      } else {
-        this._fmtLevel = (level, _) => fmtTstr(this.fmtParams.level, { level });
-      }
-    }
-
-    if (this.fmtParams.jsonl) {
-      this._fmtAll = (msg, _, level, color) => {
-        let outMap = {
-          name: null,
-          date: null,
-          level: null,
-        };
-
-        if (this._fmtName) outMap.name = this._fmtName();
-        if (this._fmtDate) outMap.date = this._fmtDate();
-        if (this._fmtLevel) outMap.level = this._fmtLevel(level, color);
-
-        outMap.message = msg;
-        const json = Object.fromEntries(Object.entries(outMap).filter(([_, v]) => v !== null));
-        return JSON.stringify(json).replace(/"(?:\\.|[^"\\])*"|\s*:\s*|\s*,\s*/g, (match) =>
-          match.startsWith('"') ? match : match.trim() + " "
-        );
-      };
-    } else {
-      this._fmtAll = (msg, ind, level, color) => {
-        let outMap = {
-          name: null,
-          date: null,
-          level: null,
-        };
-
-        const pre = " ".repeat(ind);
-        if (this._fmtName) outMap.name = this._fmtName();
-        if (this._fmtDate) outMap.date = this._fmtDate();
-        if (this._fmtLevel) outMap.level = this._fmtLevel(level, color);
-
-        const out = Object.values(outMap)
-          .filter((v) => v !== null)
-          .join(this.fmtParams.sep);
-
-        if (this.fmtParams.msgPre) {
-          return `${pre}${out}${this.fmtParams.sep}${this.fmtParams.msgPre}${this.fmtParams.sep}${msg}`;
-        }
-
-        return `${pre}${out}${msg}`;
-      };
-    }
-  }
-
-  /**
-   * Format log message.
-   *
-   * @param {string} msg Message to log
-   * @param {number} ind Indentation level (in spaces)
-   * @param {string} level Log level abbreviation (e.g. "INF")
-   * @param {string} color ANSI color code
-   * @private
-   */
-  _fmt(msg, ind, level, color) {
-    return this._fmtAll(msg, ind, level, color);
-  }
-
-  /**
-   * Format & log a message.
-   *
-   * @param {string} msg Message to log
-   * @param {number} ind Indentation level (in spaces)
-   * @param {string} level Log level abbreviation (e.g. "INF")
-   * @param {string} color ANSI color code
-   * @private
-   *
-   * @see Logger.fmtTstr
-   */
-  _log(msg, ind, level, color) {
-    if (Logger._levelMap[level] < this.level) {
-      return;
-    }
-
-    const fmted = this._fmt(msg, ind, level, color);
-    this.msgCount++;
-
-    if (this.fmtParams.out === "stdout") {
-      console.log(fmted);
-    } else if (this.fmtParams.out === "stderr") {
-      console.error(fmted);
-    } else if (this.msgCount == this.flushThreshold) {
-      this.flushToFile();
-      this.msgBuf.push(fmted);
-    } else {
-      this.msgBuf.push(fmted);
-    }
-
-    for (const link of this.links) {
-      link._log(msg, ind, level, color);
-    }
-  }
-
-  /**
-   * Force flush message buffer to output (only works for files).
-   *
-   * @see Logger._log
-   */
-  flushToFile() {
-    if (fs.existsSync(this.fmtParams.out) && fs.statSync(this.fmtParams.out).size >= this.rotateAtBytes) {
-      const dot = this.fmtParams.out.lastIndexOf(".");
-      const bname = this.fmtParams.out.slice(0, dot);
-      const suffix = parseInt(this.fmtParams.out.slice(dot + 1));
-      this.fmtParams.out = `${bname}.${suffix + 1}`;
-    }
-    fs.appendFileSync(this.fmtParams.out, `${this.msgBuf.join("\n")}\n`);
-  }
-
-  /**
-   * Link this logger to another logger.
-   * Propogates log messages to linked loggers.
-   *
-   * @param {Logger} logger Other logger to link to
-   */
-  propagateTo(logger) {
-    if (this.links.includes(logger)) {
-      throw new Error(`Logger \`${logger.name}\` is already linked to \`${this.name}\``);
-    }
-
-    this.links.push(logger);
-  }
-  /**
-   * Log a trace-level message (faint dark-grey).
-   *
-   * @param {string} msg
-   * @param {number} [ind=0]
-   */
-  trace(msg, ind = 0) {
-    this._log(msg, ind, "TRA", "2;90");
-  }
-
-  /**
-   * Log a debug-level message (dark grey).
-   *
-   * @param {string} msg
-   * @param {number} [ind=0]
-   */
-  debug(msg, ind = 0) {
-    this._log(msg, ind, "DEB", "90");
-  }
-
-  /**
-   * Log an info-level message (light cyan).
-   *
-   * @param {string} msg
-   * @param {number} [ind=0]
-   */
-  info(msg, ind = 0) {
-    this._log(msg, ind, "INF", "96");
-  }
-
-  /**
-   * Log a warning-level message (yellow).
-   *
-   * @param {string} msg
-   * @param {number} [ind=0]
-   */
-  warn(msg, ind = 0) {
-    this._log(msg, ind, "WAR", "93");
-  }
-
-  /**
-   * Log an error-level message (red).
-   *
-   * @param {string} msg
-   * @param {number} [ind=0]
-   */
-  err(msg, ind = 0) {
-    this._log(msg, ind, "ERR", "91");
-  }
-
-  /**
-   * Log a critical-level message (bold red).
-   *
-   * @param {string} msg
-   * @param {number} [ind=0]
-   */
-  crit(msg, ind = 0) {
-    this._log(msg, ind, "CRI", "1;91");
-    process.exit(1);
-  }
-}
-
-/**
- * Check if username or email already exists via API call
- *
- * @param {string} username Username to check
- * @param {string} endpoint API endpoint to check against
+ * @param {string} endpoint API endpoint to fetch data from
+ * @param {string} desc Description of the request (logging)
+ * @param {string} token JWT token for API access
  * @param {Logger} logger Logger instance for logging
- * @param {string|null} [email=null] Email to check
- * @returns {Promise<boolean>} True if user exists, false otherwise
+ * @returns {Promise<Response>} Response object & parsed JSON data
  */
-async function checkUserExists(username, endpoint, logger, email = null) {
-  logger.debug(`Sending get-users request to API [GET \`${endpoint}\`]`);
+async function getFetch(endpoint, desc, token, logger) {
+  logger.debug(`Sending ${desc} request to API [GET \`${endpoint}\`]`);
   try {
-    const response = await fetch(endpoint);
-
-    if (!response.ok) {
-      logger.crit(`Failed to fetch users from API: ${response.status}`);
-      return false;
-    }
-
-    const data = await response.json();
-    logger.trace(`Received response:\n\`${JSON.stringify(data, null, 2)}\``);
-
-    if (!data.users || !Array.isArray(data.users)) {
-      logger.crit(`Invalid response format from users API: ${JSON.stringify(data)}`);
-      return false;
-    }
-
-    if (email) {
-      return data.users.some((user) => user.username === username || user.email === email);
-    }
-    return data.users.some((user) => user.username === username);
-  } catch (error) {
-    logger.crit(`Error checking user existence: ${error.message}`);
-    return false;
+    return await fetch(endpoint, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  } catch (err) {
+    logger.crit(`Failed to fetch data from API [${desc}]: ${err.message}`);
   }
+}
+/**
+ * Short-hand for sending POST request with JSON body via fetch.
+ *
+ * @param {string} endpoint API endpoint to post data to
+ * @param {string} desc Description of the request (logging)
+ * @param {string} token JWT token for API access
+ * @param {Logger} logger Logger instance for logging
+ * @param {Object} payload Payload to send in the request body
+ * @param {Object} [headers={}] Additional headers to include in the request
+ * @returns {Promise<Response>} Response object from fetch
+ */
+async function postFetchJson(endpoint, desc, token, logger, payload, headers = {}) {
+  logger.debug(`Sending ${desc} request to API [POST \`${endpoint}\`]`);
+  try {
+    return await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        ...headers,
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    logger.crit(`Failed to post data to API [${desc}]: ${err.message}`);
+  }
+}
+
+/**
+ * Fetch owned files for a user via API call.
+ *
+ * @param {string} uid User ID to fetch files for
+ * @param {string} endpoint API endpoint to fetch owned files from
+ * @param {Logger} logger Logger instance for logging
+ * @param {string} token JWT token for API access
+ * @returns {Promise<FilesOwned>} Files array & count
+ */
+async function getOwnedFiles(uid, endpoint, logger, token) {
+  const response = await getFetch(endpoint, "get-owned-files", token, logger);
+
+  if (response.status === 403 || response.status === 401) {
+    logger.warn(`User \`${uid}\` does not have permission to view owned files`);
+    return { count: 0, files: [] };
+  } else if (!response.ok) {
+    logger.crit(`Failed to fetch owned files: ${response.status} (UID=\`"${uid}"\`)`);
+  }
+
+  const data = await response.json();
+  logger.trace("Received response:", 0, data);
+
+  if (data.count == 0) logger.info(`Found no files owned in API response (UID=\`${uid}\`)`);
+  else logger.info(`Found ${data.count} file(s) owned (UID=\`"${uid}"\`)`);
+  return data;
+}
+
+/**
+ * [GET] Get public keys for given user.
+ *
+ * @param {string} uid User ID of the requester
+ * @param {string} user Username to fetch public keys for
+ * @param {Logger} logger Logger instance for logging
+ * @param {string} endpoint API endpoint to fetch public keys from
+ * @param {string} token JWT token for API access
+ * @return {Promise<GetPublicKeysRet>}
+ */
+async function getPublicKeys(uid, user, endpoint, logger, token) {
+  const response = await getFetch(endpoint, "get-public-keys", token, logger);
+
+  if (response.status === 401) {
+    logger.warn(`User JWT token is invalid (UID=\`"${uid}"\`)`);
+    return { status: 401, msg: "User JWT token is invalid", data: null };
+  } else if (response.status === 404) {
+    logger.err(`User does not exist: ${response.status} (UID=\`"${uid}"\`)`);
+    return { status: 404, msg: `User does not exist: ${user}`, data: null };
+  } else if (!response.ok) {
+    logger.crit(`Failed to fetch public keys: ${response.status} (UID=\`"${uid}"\`)`);
+  }
+
+  const data = await response.json();
+  logger.trace("Received response:", 0, data);
+
+  if (data.user_id === uid) {
+    logger.warn(`User \`${uid}\` tried to fetch own public keys (UID=\`${uid}\`)`);
+    return { status: 403, msg: "Cannot fetch own public keys", data: null };
+  }
+
+  return { status: 200, data: data };
+}
+
+async function revokeShare(uid, fid, uname, endpoint, logger, token) {
+  const res = await postFetchJson(endpoint, "revoke-share", token, logger, { shared_with_username: uname });
+
+  if (res.status === 401) {
+    logger.warn(`User JWT token is invalid (UID=\`"${uid}"\`)`);
+    return { status: 401, msg: "User JWT token is invalid" };
+  } else if (res.status === 404) {
+    logger.warn(`File or share does not exist: ${res.status} (FID=\`"${fid}"\`; UID=\`"${uid}"\`)`);
+    return { status: 404, msg: `File or share does not exist: \`"${fid}"\` \`"${uname}"\`` };
+  } else if (!res.ok) {
+    logger.crit(`Failed to revoke access: ${res.status} (FID=\`"${fid}"\`; UID=\`"${uid}"\`)`);
+  }
+
+  return { status: 200 };
+}
+
+/**
+ * [POST] Share file with another user.
+ *
+ * @param {string} uid User ID of the requester
+ * @param {string} endpoint API endpoint to share the file
+ * @param {Logger} logger Logger instance for logging
+ * @param {string} token JWT token for API access
+ * @param {Object} payload Payload containing share information
+ * @return {Promise<ShareRet>}
+ */
+async function shareWithBob(uid, endpoint, logger, token, payload) {
+  const res = await postFetchJson(endpoint, "share-file", token, logger, payload);
+
+  if (res.status === 401) {
+    logger.warn(`User JWT token is invalid (UID=\`"${uid}"\`)`);
+    return { status: 401, msg: "User JWT token is invalid" };
+  } else if (res.status === 400) {
+    logger.warn(`Bad request (UID=\`"${uid}"\`): ${res.status} -> ${res.statusText}`);
+    return { status: 400, msg: "Bad request" };
+  } else if (res.status === 404) {
+    logger.warn(`File or recipient not found (UID=\`"${uid}"\`): ${res.status}`);
+    return { status: 404, msg: "File or recipient not found" };
+  }
+
+  const data = await res.json();
+  logger.trace("Received response:", 0, data);
+
+  return { status: 200, data: data };
+}
+
+/**
+ * Fetch files shared with the current user via API call.
+ *
+ * @param {string} uid User ID to fetch files for
+ * @param {string} endpoint API endpoint to fetch owned files from
+ * @param {Logger} logger Logger instance for logging
+ * @param {string} token JWT token for API access
+ * @returns {Promise<FilesSharedWithMe>} Files array & count
+ */
+async function getFilesSharedWithMe(uid, endpoint, logger, token) {
+  const response = await getFetch(endpoint, "get-shared-files", token, logger);
+
+  if (response.status === 403 || response.status === 401) {
+    logger.warn(`User \`${uid}\` does not have permission to view shared files`);
+    return { count: 0, files: [] };
+  } else if (!response.ok) {
+    logger.crit(`Failed to fetch files shared with user: ${response.status} (UID=\`"${uid}"\`)`);
+  }
+
+  const data = await response.json();
+  logger.trace("Received response:", 0, data);
+
+  if (data.count == 0) logger.info(`Found no files shared with user in API response (UID=\`"${uid}"\`)`);
+  else logger.info(`Found ${data.count} file(s) shared with user (UID=\`"${uid}"\`)`);
+  return data;
+}
+
+/**
+ * Fetch files shared with the current user via API call.
+ *
+ * @param {string} uid User ID to fetch files for
+ * @param {string} endpoint API endpoint to fetch owned files from
+ * @param {Logger} logger Logger instance for logging
+ * @param {string} token JWT token for API access
+ * @returns {Promise<FilesSharedByMe>} Files array & count
+ */
+async function getFilesSharedByMe(uid, endpoint, logger, token) {
+  const response = await getFetch(endpoint, "get-files-shared-by-me", token, logger);
+
+  if (response.status === 403 || response.status === 401) {
+    logger.warn(`User does not have permission to view shares (UID=\`"${uid}"\`)`);
+    return { status: 403, msg: "User does not have permission to view shares", data: null };
+  } else if (!response.ok) {
+    logger.crit(`Failed to fetch files shared by user for file \`${fname}\`: ${response.status} (UID=\`"${uid}"\`)`);
+  }
+
+  const data = await response.json();
+  logger.trace("Received response:", 0, data);
+
+  if (data.count === 0) {
+    logger.info(`Found no files shared by user in API response (UID=\`"${uid}"\`)`);
+    return { status: 204, msg: "No files shared by user", data: { count: 0, files: [] } };
+  }
+
+  logger.info(`Found ${data.count} file(s) shared by user (UID=\`"${uid}"\`)`);
+
+  return { status: 200, data: data };
+}
+
+/**
+ * Get encrypted file content by filename via API call.
+ *
+ * @param {string} fname Filename of to fetch
+ * @param {string} uid User ID to fetch file for
+ * @param {string} endpoint API endpoint to fetch encrypted file from
+ * @param {Logger} logger Logger instance for logging
+ * @param {string} token JWT token for API access
+ * @returns {Promise<{status: number, content: string|Buffer}>} Encrypted file content or error object
+ */
+async function getEncryptedFile(fname, uid, endpoint, logger, token) {
+  const response = await getFetch(endpoint, "get-encrypted-file", token, logger);
+
+  if (response.status === 403 || response.status === 401) {
+    const ret = { status: 403, content: "User does not have permission to view owned files" };
+    logger.warn(`${ret.content} (FILE=\`"${fname}"\`; UID=\`"${uid}"\`)`);
+    return ret;
+  } else if (response.status === 404) {
+    const ret = { status: 404, content: `File \`"${fname}"\` not found in API` };
+    logger.err(ret.content);
+    return ret;
+  }
+
+  if (!response.ok) logger.crit(`Failed to get encrypted file \`"${fname}"\`: ${response.status}`);
+
+  const data = await response.arrayBuffer();
+  logger.trace(`Received response: \`${data}\``);
+  return { status: 200, content: Buffer.from(data) };
 }
 
 /**
@@ -394,26 +265,15 @@ async function checkUserExists(username, endpoint, logger, email = null) {
  * @returns {Promise<Object>} User data object or empty object if not found
  */
 async function getUserData(uid, endpoint, logger, token) {
-  logger.debug(`Sending get-users request to API [GET \`${endpoint}\`]`);
-  try {
-    const response = await fetch(endpoint, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+  const response = await getFetch(endpoint, "get-users", token, logger);
 
-    if (!response.ok) {
-      logger.warn(`Failed to fetch data for user \`${uid}\` from API: ${response.status}`);
-      return {};
-    }
+  if (!response.ok) logger.crit(`Failed to fetch user data (UID=\`"${uid}"\`) from API: ${response.status}`);
 
-    const data = await response.json();
-    logger.trace(`Received response:\n\`${JSON.stringify(data, null, 2)}\``);
-    return data;
-  } catch (error) {
-    logger.crit(`Error fetching user data: ${error.message}`);
-    return {};
-  }
+  const data = await response.json();
+  logger.trace(`Received response:\n\`${JSON.stringify(data, null, 2)}\``);
+
+  if (data.length == 0) logger.crit(`No user data found for user (UID=\`"${uid}"\`) in API response`);
+  return data;
 }
 
 /**
@@ -423,18 +283,18 @@ function pusage() {
   console.log(
     "\n\x1b[1;96mUsage:\x1b[0;96m node server.js [--port \x1b[2mPORT\x1b[0;96m] [--retry-port] [--help]\x1b[0m\n\n" +
       "\x1b[1;96mOptions:\x1b[0;96m\n" +
-      "  -p, --port \x1b[2mPORT\x1b[0m         Specify the port to run the server on (default=\x1b[93m3443\x1b[0m)\n" +
-      "  \x1b[96m-r, --retry-port\x1b[0m        Keep trying ports 100x until one is available\n" +
+      "  -p, --port \x1b[2mPORT\x1b[0m         Specify the port to run the server on (default=\x1b[93m3443\x1b[0m; " +
+      "range=\x1b[93m3000\x1b[0m-\x1b[93m65535\x1b[0m)\n" +
       "  \x1b[96m-k, --kill-port\x1b[0m         Kill any server running on the specified port \x1b[91m[potentially dangerous]\x1b[0m\n" +
       "  \x1b[96m-u, --usage\x1b[0m             Show this help message\n" +
-      "  \x1b[96m-h, --help\x1b[0m              ^\n"
+      "  \x1b[96m-h, --help\x1b[0m              ^\n",
   );
 }
 
 /**
  * Parse command line arguments for server configuration.
  *
- * @return {{retry: boolean, forceKill: boolean, port: number}} Parsed arguments
+ * @return {{forceKill: boolean, port: number}} Parsed arguments
  */
 function parseArgv() {
   if (process.argv.length < 2) {
@@ -443,12 +303,11 @@ function parseArgv() {
 
   let args = process.argv.slice(2);
   let argv = {
-    retry: false,
     forceKill: false,
     port: 3443,
   };
 
-  const VALID_ARGS = ["--port", "-p", "--retry-port", "-r", "--kill-port", "-k", "--usage", "-u", "--help", "-h"];
+  const VALID_ARGS = ["--port", "-p", "--force-kill", "-f", "--usage", "-u", "--help", "-h"];
 
   for (const arg of args) {
     if (!VALID_ARGS.includes(arg)) {
@@ -462,18 +321,12 @@ function parseArgv() {
     }
     if (arg.startsWith("--port") || arg.startsWith("-p")) {
       argv.port = parseInt(args[args.indexOf("--port") + 1] || args[args.indexOf("-p") + 1]);
-      if (isNaN(argv.port) || argv.port < 1 || argv.port > 65535) {
-        perr(`Invalid port number: \x1b[2;96m\`${argv.port}\`\x1b[0m`);
+      if (isNaN(argv.port) || argv.port < 3000 || argv.port > 65535) {
+        perr(
+          `Invalid port number: \x1b[2;96m\`${argv.port}\`\x1b[0m (expected \x1b[93m3000\x1b[0m-\x1b[93m65535\x1b[0m)`,
+        );
       }
-    } else if (["--retry-port", "-r"].includes(arg)) {
-      if (argv.forceKill) {
-        perr("Cannot use \x1b[96m--kill-port\x1b[0m with \x1b[96m--retry-port\x1b[0m");
-      }
-      argv.retry = true;
-    } else if (["--kill-port", "-k"].includes(arg)) {
-      if (argv.retry) {
-        perr("Cannot use \x1b[96m--kill-port\x1b[0m with \x1b[96m--retry-port\x1b[0m");
-      }
+    } else if (["--force-kill", "-f"].includes(arg)) {
       argv.forceKill = true;
     }
   }
@@ -498,8 +351,10 @@ function parseDotEnv(proj_dir, logger, req_keys) {
     const ukey = key.toUpperCase().trim();
     const lkey = key.toLowerCase().trim();
 
-    if (ukey in req_keys) {
+    if (ukey in req_keys && req_keys[ukey] === "uint") {
       logger.info(`Loaded env var: \`${ukey}=${value}\``);
+    } else if (ukey in req_keys && req_keys[ukey] === "string") {
+      logger.info(`Loaded env var: \`${ukey}="${value}"\``);
     } else {
       logger.warn(`Unknown env var: \`${ukey}\` (ignored)`);
       continue;
@@ -630,7 +485,7 @@ async function killPort(port, logger) {
               }
             } catch (ssError) {
               throw new Error(
-                `All methods failed - lsof: ${lsofError.message}, fuser: ${fuserError.message}, netstat: ${netstatError.message}, ss: ${ssError.message}`
+                `All methods failed - lsof: ${lsofError.message}, fuser: ${fuserError.message}, netstat: ${netstatError.message}, ss: ${ssError.message}`,
               );
             }
           }
@@ -645,4 +500,19 @@ async function killPort(port, logger) {
   }
 }
 
-export { Logger, checkUserExists, parseArgv, parseDotEnv, checkFilesExist, getUserData, killPort };
+export {
+  Logger,
+  parseArgv,
+  parseDotEnv,
+  checkFilesExist,
+  getUserData,
+  getFetch,
+  killPort,
+  getOwnedFiles,
+  getFilesSharedWithMe,
+  getEncryptedFile,
+  shareWithBob,
+  getFilesSharedByMe,
+  getPublicKeys,
+  revokeShare,
+};

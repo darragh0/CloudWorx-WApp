@@ -39,18 +39,30 @@ function queryAll(selector) {
  * @param {HTMLElement} toggle Toggle button
  */
 function regPwToggle(toggle) {
+  console.log(`Registering password toggle for element with data-target: ${toggle.getAttribute("data-target")}`);
+
   toggle.addEventListener("click", () => {
+    console.log(`Password toggle clicked for: ${toggle.getAttribute("data-target")}`);
     const targetId = toggle.getAttribute("data-target");
     const passwordInput = fromId(targetId);
+
+    if (!passwordInput) {
+      console.error(`Password input with id "${targetId}" not found`);
+      return;
+    }
+
+    console.log(`Found password input: ${passwordInput.id}, current type: ${passwordInput.type}`);
 
     if (passwordInput.type === "password") {
       passwordInput.type = "text";
       toggle.classList.remove("fa-eye");
       toggle.classList.add("fa-eye-slash");
+      console.log(`Changed to text type and updated icon to fa-eye-slash`);
     } else {
       passwordInput.type = "password";
       toggle.classList.remove("fa-eye-slash");
       toggle.classList.add("fa-eye");
+      console.log(`Changed to password type and updated icon to fa-eye`);
     }
   });
 }

@@ -3,7 +3,7 @@
  * @author darragh0
  */
 
-import { Logger } from "./util.js";
+import { Logger } from "./logging.js";
 
 /** @private */
 const _MAX_LEN = 255;
@@ -42,7 +42,7 @@ const _REGEX = {
  * Check fields exist, are given types, & non-empty.
  *
  * @param {RequiredFields} fields Map of fields to validate (key: [value, type])
- * @param {Logger} [logger=null] Logger instance for logging verbose output
+ * @param {Logger} [logger=null] Logger instance for logging verbose trace output
  * @returns {string} Error message or empty string if valid
  */
 function valReqFields(fields, logger = null) {
@@ -64,7 +64,7 @@ function valReqFields(fields, logger = null) {
     } else if (vtype === "string" && value.trim() === "") {
       empty.push(`\`${key}\``);
     } else if (logger) {
-      logger.trace(`Field is valid: \`${key}\`=\`${value}\` (type=\`${vtype}\`)`);
+      logger.trace(`Field is valid: \`${key}\` (type=\`${vtype}\`)`);
     }
   }
 
